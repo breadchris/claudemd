@@ -33835,6 +33835,21 @@ var ClaudeDocBrowser = ({
       console.error("Failed to download document:", error);
     }
   };
+  const handleViewDocument = async (docId) => {
+    try {
+      const doc = await docService.getDocument(docId, user?.id, true);
+      if (doc) {
+        setSelectedDoc(doc);
+        setDocs(
+          (prevDocs) => prevDocs.map(
+            (d) => d.id === docId ? { ...d, views: d.views + 1 } : d
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to view document:", error);
+    }
+  };
   const filteredTags = availableTags.filter(
     (tag) => tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase())
   );
@@ -33847,6 +33862,90 @@ var ClaudeDocBrowser = ({
         onBack: () => setShowProfile(false)
       }
     );
+  }
+  const handleCloseDocument = () => {
+    setSelectedDoc(null);
+  };
+  if (selectedDoc) {
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center justify-between p-6 border-b", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { className: "text-2xl font-bold text-gray-900", children: selectedDoc.title }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-4 mt-2 text-sm text-gray-600", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { children: [
+              "by @",
+              selectedDoc.author_username
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2605" }),
+              " ",
+              selectedDoc.stars
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u{1F441}" }),
+              " ",
+              selectedDoc.views
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2B07" }),
+              " ",
+              selectedDoc.downloads
+            ] })
+          ] }),
+          selectedDoc.description && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-gray-600 mt-2", children: selectedDoc.description })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "button",
+          {
+            onClick: handleCloseDocument,
+            className: "ml-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg",
+            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "text-xl", children: "\xD7" })
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "flex-1 overflow-auto p-6", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("pre", { className: "whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg border", children: selectedDoc.content }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center justify-between p-6 border-t bg-gray-50", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "flex flex-wrap gap-2", children: selectedDoc.tag_names.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "span",
+          {
+            className: "bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm",
+            children: tag
+          },
+          tag
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "button",
+            {
+              onClick: (e) => {
+                e.stopPropagation();
+                handleStar(selectedDoc.id);
+              },
+              disabled: starringDocId === selectedDoc.id,
+              className: `px-3 py-2 rounded-lg transition-colors ${selectedDoc.is_starred ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200" : "bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-700"} ${starringDocId === selectedDoc.id ? "opacity-50" : ""}`,
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "mr-1", children: "\u2605" }),
+                selectedDoc.is_starred ? "Starred" : "Star"
+              ]
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+            "button",
+            {
+              onClick: (e) => {
+                e.stopPropagation();
+                handleDownload(selectedDoc.id);
+              },
+              className: "px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors",
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "mr-1", children: "\u2B07" }),
+                "Download"
+              ]
+            }
+          )
+        ] })
+      ] })
+    ] }) });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "min-h-screen bg-gray-50", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "bg-white shadow-sm border-b sticky top-0 z-40", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8", children: [
@@ -34030,68 +34129,91 @@ var ClaudeDocBrowser = ({
             }
           )
         ] }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_jsx_runtime3.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: `grid gap-6 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`, children: docs.map((doc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "p-6", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-start justify-between mb-3", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { className: "text-lg font-semibold text-gray-900 line-clamp-2", children: doc.title }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-1 ml-2", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                  "button",
-                  {
-                    onClick: () => handleStar(doc.id),
-                    disabled: starringDocId === doc.id,
-                    className: `p-1.5 rounded transition-colors ${doc.is_starred ? "text-yellow-500 hover:text-yellow-600" : "text-gray-400 hover:text-yellow-500"} ${starringDocId === doc.id ? "opacity-50" : ""}`,
-                    children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "text-sm", children: "\u2605" })
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                  "button",
-                  {
-                    onClick: () => handleDownload(doc.id),
-                    className: "p-1.5 text-gray-400 hover:text-blue-500 rounded transition-colors",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "text-sm", children: "\u2B07" })
-                  }
-                )
-              ] })
-            ] }),
-            doc.description && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-gray-600 text-sm mb-3 line-clamp-2", children: doc.description }),
-            doc.tag_names.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex flex-wrap gap-1 mb-3", children: [
-              doc.tag_names.slice(0, 4).map((tag) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "span",
-                {
-                  className: "bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs",
-                  children: tag
-                },
-                tag
-              )),
-              doc.tag_names.length > 4 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "text-gray-500 text-xs px-1", children: [
-                "+",
-                doc.tag_names.length - 4
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center justify-between text-xs text-gray-500", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { children: [
-                "by @",
-                doc.author_username
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-3", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2605" }),
-                  " ",
-                  doc.stars
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: `grid gap-6 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`, children: docs.map((doc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "div",
+            {
+              className: "bg-white rounded-lg shadow-sm border hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2",
+              onClick: () => handleViewDocument(doc.id),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleViewDocument(doc.id);
+                }
+              },
+              tabIndex: 0,
+              role: "button",
+              "aria-label": `View document: ${doc.title}`,
+              children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "p-6", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-start justify-between mb-3", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { className: "text-lg font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2 transition-colors", children: doc.title }),
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-1 ml-2", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                      "button",
+                      {
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          handleStar(doc.id);
+                        },
+                        disabled: starringDocId === doc.id,
+                        className: `p-1.5 rounded transition-colors ${doc.is_starred ? "text-yellow-500 hover:text-yellow-600" : "text-gray-400 hover:text-yellow-500"} ${starringDocId === doc.id ? "opacity-50" : ""}`,
+                        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "text-sm", children: "\u2605" })
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                      "button",
+                      {
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          handleDownload(doc.id);
+                        },
+                        className: "p-1.5 text-gray-400 hover:text-blue-500 rounded transition-colors",
+                        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "text-sm", children: "\u2B07" })
+                      }
+                    )
+                  ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u{1F441}" }),
-                  " ",
-                  doc.views
+                doc.description && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "text-gray-600 text-sm mb-3 line-clamp-2", children: doc.description }),
+                doc.tag_names.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex flex-wrap gap-1 mb-3", children: [
+                  doc.tag_names.slice(0, 4).map((tag) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                    "span",
+                    {
+                      className: "bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs",
+                      children: tag
+                    },
+                    tag
+                  )),
+                  doc.tag_names.length > 4 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "text-gray-500 text-xs px-1", children: [
+                    "+",
+                    doc.tag_names.length - 4
+                  ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2B07" }),
-                  " ",
-                  doc.downloads
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center justify-between text-xs text-gray-500", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { children: [
+                    "by @",
+                    doc.author_username
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center gap-3", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2605" }),
+                      " ",
+                      doc.stars
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u{1F441}" }),
+                      " ",
+                      doc.views
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { className: "flex items-center gap-1", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2B07" }),
+                      " ",
+                      doc.downloads
+                    ] })
+                  ] })
                 ] })
               ] })
-            ] })
-          ] }) }, doc.id)) }),
+            },
+            doc.id
+          )) }),
           totalPages > 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "flex items-center justify-center mt-8 gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
               "button",

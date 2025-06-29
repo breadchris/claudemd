@@ -200,6 +200,27 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
     }
   };
 
+  // Handle document view
+  const handleViewDocument = async (docId: string) => {
+    try {
+      const doc = await docService.getDocument(docId, user?.id, true);
+      if (doc) {
+        setSelectedDoc(doc);
+        
+        // Update view count optimistically
+        setDocs(prevDocs => 
+          prevDocs.map(d => 
+            d.id === docId 
+              ? { ...d, views: d.views + 1 }
+              : d
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to view document:', error);
+    }
+  };
+
   // Filter tags for mobile view
   const filteredTags = availableTags.filter(tag =>
     tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase())
@@ -212,6 +233,96 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
         onEdit={onEdit}
         onBack={() => setShowProfile(false)}
       />
+    );
+  }
+
+  // Handle closing document detail view
+  const handleCloseDocument = () => {
+    setSelectedDoc(null);
+  };
+
+  // Document Detail Modal
+  if (selectedDoc) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-900">{selectedDoc.title}</h2>
+              <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                <span>by @{selectedDoc.author_username}</span>
+                <span className="flex items-center gap-1">
+                  <span>★</span> {selectedDoc.stars}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span>👁</span> {selectedDoc.views}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span>⬇</span> {selectedDoc.downloads}
+                </span>
+              </div>
+              {selectedDoc.description && (
+                <p className="text-gray-600 mt-2">{selectedDoc.description}</p>
+              )}
+            </div>
+            <button
+              onClick={handleCloseDocument}
+              className="ml-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg"
+            >
+              <span className="text-xl">×</span>
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div className="flex-1 overflow-auto p-6">
+            <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg border">
+              {selectedDoc.content}
+            </pre>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+            <div className="flex flex-wrap gap-2">
+              {selectedDoc.tag_names.map(tag => (
+                <span 
+                  key={tag}
+                  className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStar(selectedDoc.id);
+                }}
+                disabled={starringDocId === selectedDoc.id}
+                className={`px-3 py-2 rounded-lg transition-colors ${
+                  selectedDoc.is_starred
+                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-700'
+                } ${starringDocId === selectedDoc.id ? 'opacity-50' : ''}`}
+              >
+                <span className="mr-1">★</span>
+                {selectedDoc.is_starred ? 'Starred' : 'Star'}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(selectedDoc.id);
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <span className="mr-1">⬇</span>
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -432,15 +543,31 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
                     : 'grid-cols-1'
                 }`}>
                   {docs.map(doc => (
-                    <div key={doc.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                    <div 
+                      key={doc.id} 
+                      className="bg-white rounded-lg shadow-sm border hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"
+                      onClick={() => handleViewDocument(doc.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleViewDocument(doc.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View document: ${doc.title}`}
+                    >
                       <div className="p-6">
                         <div className="flex items-start justify-between mb-3">
-                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+                          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2 transition-colors">
                             {doc.title}
                           </h3>
                           <div className="flex items-center gap-1 ml-2">
                             <button
-                              onClick={() => handleStar(doc.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStar(doc.id);
+                              }}
                               disabled={starringDocId === doc.id}
                               className={`p-1.5 rounded transition-colors ${
                                 doc.is_starred
@@ -451,7 +578,10 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
                               <span className="text-sm">★</span>
                             </button>
                             <button
-                              onClick={() => handleDownload(doc.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(doc.id);
+                              }}
                               className="p-1.5 text-gray-400 hover:text-blue-500 rounded transition-colors"
                             >
                               <span className="text-sm">⬇</span>
