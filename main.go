@@ -390,13 +390,8 @@ func buildWithEsbuild(inputPath, outputPath string, writeToDisk bool) api.BuildR
 		JSX:             api.JSXAutomatic,
 		JSXImportSource: "react",
 		LogLevel:        api.LogLevelInfo,
-		External: []string{
-			"react",
-			"react-dom",
-			"react-dom/client",
-			"react/jsx-runtime",
-			"@supabase/supabase-js",
-		},
+		// Bundle all dependencies for self-contained production build
+		External: []string{},
 		TsconfigRaw: `{
 			"compilerOptions": {
 				"jsx": "react-jsx",
@@ -442,13 +437,8 @@ func buildComponentForRendering(sourceCode, resolveDir, sourcefile string) api.B
 		JSX:             api.JSXAutomatic,
 		JSXImportSource: "react",
 		LogLevel:        api.LogLevelSilent,
-		External: []string{
-			"react",
-			"react-dom",
-			"react-dom/client",
-			"react/jsx-runtime",
-			"@supabase/supabase-js",
-		},
+		// Bundle all dependencies for self-contained production build
+		External: []string{},
 		TsconfigRaw: `{
 			"compilerOptions": {
 				"jsx": "react-jsx",
@@ -494,13 +484,8 @@ func buildAsESModule(sourceCode, resolveDir, sourcefile string) api.BuildResult 
 		JSX:             api.JSXAutomatic,
 		JSXImportSource: "react",
 		LogLevel:        api.LogLevelSilent,
-		External: []string{
-			"react",
-			"react-dom",
-			"react-dom/client",
-			"react/jsx-runtime",
-			"@supabase/supabase-js",
-		},
+		// Bundle all dependencies for self-contained production build
+		External: []string{},
 		TsconfigRaw: `{
 			"compilerOptions": {
 				"jsx": "react-jsx",
@@ -643,120 +628,19 @@ func generateProductionHTML() string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Supabase CLAUDE.md Platform</title>
     
-    <!-- Import maps for production -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18",
-            "react-dom": "https://esm.sh/react-dom@18",
-            "react-dom/client": "https://esm.sh/react-dom@18/client",
-            "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime",
-            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
-        }
-    }
-    </script>
-    
-    <!-- Styling -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daisyui@5">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    
-    <!-- Global styles -->
-    <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: #f9fafb;
-        }
-        #root { 
-            width: 100%; 
-            min-height: 100vh; 
-        }
-        .error { 
-            padding: 20px; 
-            color: #dc2626; 
-            background: #fef2f2; 
-            border: 1px solid #fecaca; 
-            margin: 20px; 
-            border-radius: 8px;
-            font-family: monospace;
-        }
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            gap: 12px;
-        }
-        .spinner {
-            border: 2px solid #f3f4f6;
-            border-top: 2px solid #3b82f6;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
 </head>
 <body>
     <div id="root">
         <div class="loading">
             <div class="spinner"></div>
-            <span>Loading Supabase CLAUDE.md Platform...</span>
+            <div>Loading Supabase CLAUDE.md Platform...</div>
         </div>
     </div>
     
-    <script type="module">
-        try {
-            console.log('🚀 Loading Supabase CLAUDE.md Platform (Production)...');
-            
-            // Import the production app bundle
-            const appModule = await import('./app.js');
-            
-            // Import React and ReactDOM
-            const React = await import('react');
-            const ReactDOM = await import('react-dom/client');
-            
-            console.log('📦 Modules loaded successfully');
-            
-            // Get the main app component (ClaudeDocApp is the default export)
-            const App = appModule.default || appModule.ClaudeDocApp;
-            
-            if (!App) {
-                throw new Error('No default export found in production app bundle');
-            }
-            
-            console.log('🎨 Rendering Supabase CLAUDE.md Platform...');
-            
-            // Render the application
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(React.createElement(App));
-            
-            console.log('✅ Supabase CLAUDE.md Platform loaded successfully!');
-            
-        } catch (error) {
-            console.error('❌ Failed to load Supabase CLAUDE.md Platform:', error);
-            
-            document.getElementById('root').innerHTML = 
-                '<div class="error">' +
-                '<h3>🚨 Error Loading Supabase CLAUDE.md Platform</h3>' +
-                '<p><strong>Error:</strong> ' + error.message + '</p>' +
-                '<pre>' + (error.stack || '') + '</pre>' +
-                '<h4>🔧 Troubleshooting:</h4>' +
-                '<ul>' +
-                '<li>Check that the production build completed successfully</li>' +
-                '<li>Verify Supabase configuration in bundled app.js</li>' +
-                '<li>Ensure all dependencies are properly bundled</li>' +
-                '<li>Check browser console for additional error details</li>' +
-                '<li>Try rebuilding the application with: ./supabase-server build</li>' +
-                '</ul>' +
-                '</div>';
-        }
-    </script>
+    <!-- Self-contained bundled application -->
+    <script src="./app.js"></script>
 </body>
 </html>`
 }
