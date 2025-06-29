@@ -33269,9 +33269,18 @@ var AuthProvider = ({ children }) => {
   const authService = new AuthService();
   (0, import_react.useEffect)(() => {
     initializeAuth();
+    const authTimeout = setTimeout(() => {
+      console.warn("Auth initialization timeout - forcing loading=false");
+      setAuthState((prev) => ({
+        ...prev,
+        loading: false,
+        error: prev.error || "Authentication initialization timeout"
+      }));
+    }, 1e4);
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event, session);
+        clearTimeout(authTimeout);
         if (session) {
           await handleAuthSession(session);
         } else {
@@ -33286,16 +33295,37 @@ var AuthProvider = ({ children }) => {
       }
     );
     return () => {
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
+  const clearAuthStorage = () => {
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          localStorage.removeItem(key);
+        }
+      });
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      console.log("Cleared potentially corrupted auth storage");
+    } catch (error) {
+      console.error("Failed to clear auth storage:", error);
+    }
+  };
   const initializeAuth = async () => {
     try {
+      console.log("\u{1F504} Auth: Initializing authentication...");
       setAuthState((prev) => ({ ...prev, loading: true, error: null }));
       const session = await authService.getCurrentSession();
+      console.log("\u{1F50D} Auth: Retrieved session:", session ? "Found" : "None");
       if (session) {
         await handleAuthSession(session);
       } else {
+        console.log("\u2705 Auth: No session - setting unauthenticated state");
         setAuthState((prev) => ({
           ...prev,
           user: null,
@@ -33305,7 +33335,8 @@ var AuthProvider = ({ children }) => {
         }));
       }
     } catch (error) {
-      console.error("Failed to initialize auth:", error);
+      console.error("\u274C Auth: Failed to initialize:", error);
+      clearAuthStorage();
       setAuthState((prev) => ({
         ...prev,
         loading: false,
@@ -33315,8 +33346,10 @@ var AuthProvider = ({ children }) => {
   };
   const handleAuthSession = async (session) => {
     try {
+      console.log("\u{1F464} Auth: Handling session for user:", session.user.email);
       setAuthState((prev) => ({ ...prev, loading: true, error: null }));
       const userProfile = await authService.syncUserProfile(session.user);
+      console.log("\u2705 Auth: User profile synced:", userProfile.username);
       setAuthState((prev) => ({
         ...prev,
         user: userProfile,
@@ -33325,9 +33358,12 @@ var AuthProvider = ({ children }) => {
         error: null
       }));
     } catch (error) {
-      console.error("Failed to handle auth session:", error);
+      console.error("\u274C Auth: Failed to handle session:", error);
+      clearAuthStorage();
       setAuthState((prev) => ({
         ...prev,
+        user: null,
+        session: null,
         loading: false,
         error: error instanceof Error ? error.message : "Failed to load user profile"
       }));
@@ -33710,7 +33746,6 @@ var ClaudeDocBrowser = ({
 }) => {
   const docService = new ClaudeDocService();
   const tagService = new TagService();
-  const searchService = new SearchService();
   const { user, signInWithGithub } = useAuth2();
   const [showProfile, setShowProfile] = (0, import_react3.useState)(false);
   const [docs, setDocs] = (0, import_react3.useState)([]);
@@ -33761,10 +33796,22 @@ var ClaudeDocBrowser = ({
   }, []);
   (0, import_react3.useEffect)(() => {
     loadDocs(true);
+  }, [loadDocs]);
+  (0, import_react3.useEffect)(() => {
+    loadDocs(true);
   }, [searchQuery, selectedTags, sortBy]);
   (0, import_react3.useEffect)(() => {
     loadTags();
   }, []);
+  (0, import_react3.useEffect)(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (loading && docs.length === 0) {
+        console.warn("Auth loading timeout - attempting to load docs anyway");
+        loadDocs(true);
+      }
+    }, 5e3);
+    return () => clearTimeout(fallbackTimer);
+  }, [loading, docs.length, loadDocs]);
   const handleSearch = (query) => {
     setSearchQuery(query);
     setCurrentPage(1);

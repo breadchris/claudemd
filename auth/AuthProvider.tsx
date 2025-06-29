@@ -41,10 +41,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Initialize auth state
     initializeAuth();
 
+    // Fallback timeout to prevent infinite loading
+    const authTimeout = setTimeout(() => {
+      console.warn('Auth initialization timeout - forcing loading=false');
+      setAuthState(prev => ({
+        ...prev,
+        loading: false,
+        error: prev.error || 'Authentication initialization timeout'
+      }));
+    }, 10000); // 10 second timeout
+
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session);
+        
+        // Clear timeout since auth state is responding
+        clearTimeout(authTimeout);
         
         if (session) {
           await handleAuthSession(session);
@@ -61,19 +74,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     return () => {
+      clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
   }, []);
 
+  const clearAuthStorage = () => {
+    try {
+      // Clear Supabase auth storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      console.log('Cleared potentially corrupted auth storage');
+    } catch (error) {
+      console.error('Failed to clear auth storage:', error);
+    }
+  };
+
   const initializeAuth = async () => {
     try {
+      console.log('🔄 Auth: Initializing authentication...');
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
       const session = await authService.getCurrentSession();
+      console.log('🔍 Auth: Retrieved session:', session ? 'Found' : 'None');
       
       if (session) {
         await handleAuthSession(session);
       } else {
+        console.log('✅ Auth: No session - setting unauthenticated state');
         setAuthState(prev => ({
           ...prev,
           user: null,
@@ -83,7 +121,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }));
       }
     } catch (error) {
-      console.error('Failed to initialize auth:', error);
+      console.error('❌ Auth: Failed to initialize:', error);
+      
+      // Clear potentially corrupted storage on auth failure
+      clearAuthStorage();
+      
       setAuthState(prev => ({
         ...prev,
         loading: false,
@@ -94,10 +136,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleAuthSession = async (session: Session) => {
     try {
+      console.log('👤 Auth: Handling session for user:', session.user.email);
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
       // Get or create user profile
       const userProfile = await authService.syncUserProfile(session.user);
+      console.log('✅ Auth: User profile synced:', userProfile.username);
       
       setAuthState(prev => ({
         ...prev,
@@ -107,9 +151,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: null
       }));
     } catch (error) {
-      console.error('Failed to handle auth session:', error);
+      console.error('❌ Auth: Failed to handle session:', error);
+      
+      // On session handling failure, clear storage and reset auth
+      clearAuthStorage();
+      
       setAuthState(prev => ({
         ...prev,
+        user: null,
+        session: null,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to load user profile'
       }));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ClaudeDocService, TagService, SearchService } from '../services';
+import { ClaudeDocService, TagService } from '../services';
 import { useAuth } from '../auth';
 import type { 
   ClaudeDocResponse, 
@@ -7,24 +7,6 @@ import type {
   SearchParams 
 } from '../types/database';
 import { UserProfile } from './UserProfile';
-
-// Predefined developer tags
-const PREDEFINED_TAGS = [
-  // Languages
-  'typescript', 'javascript', 'python', 'golang', 'rust', 'java', 'csharp', 'ruby', 'php',
-  // Frameworks
-  'react', 'vue', 'angular', 'nextjs', 'svelte', 'express', 'fastapi', 'django', 'rails', 'laravel',
-  // Infrastructure
-  'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'terraform', 'ansible',
-  // Databases
-  'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch',
-  // Tools
-  'git', 'vscode', 'intellij', 'postman', 'figma', 'slack',
-  // APIs
-  'rest', 'graphql', 'websocket', 'grpc', 'oauth', 'jwt',
-  // Platforms
-  'web', 'mobile', 'desktop', 'cli', 'api', 'microservices'
-];
 
 interface ClaudeDocBrowserProps {
   onCreateNew?: () => void;
@@ -38,7 +20,6 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
   // Services
   const docService = new ClaudeDocService();
   const tagService = new TagService();
-  const searchService = new SearchService();
 
   // Auth state
   const { user, signInWithGithub } = useAuth();
@@ -104,11 +85,28 @@ export const ClaudeDocBrowser: React.FC<ClaudeDocBrowserProps> = ({
   // Load data on mount and when dependencies change
   useEffect(() => {
     loadDocs(true);
+  }, [loadDocs]);
+
+  // Separate effect for search parameter changes
+  useEffect(() => {
+    loadDocs(true);
   }, [searchQuery, selectedTags, sortBy]);
 
   useEffect(() => {
     loadTags();
   }, []);
+
+  // Fallback to load docs even if auth is stuck loading
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (loading && docs.length === 0) {
+        console.warn('Auth loading timeout - attempting to load docs anyway');
+        loadDocs(true);
+      }
+    }, 5000); // 5 second fallback
+
+    return () => clearTimeout(fallbackTimer);
+  }, [loading, docs.length, loadDocs]);
 
   // Handle search
   const handleSearch = (query: string) => {
