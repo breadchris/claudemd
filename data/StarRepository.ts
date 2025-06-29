@@ -26,6 +26,7 @@ export class StarRepository {
     const { error } = await supabase
       .from('claude_doc_stars')
       .insert({
+        id: crypto.randomUUID(),
         claude_doc_id: docId,
         user_id: userId
       });

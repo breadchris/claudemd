@@ -34,7 +34,7 @@ if (typeof document !== 'undefined') {
     
     try {
       const root = createRoot(rootElement);
-      root.render(React.createElement(ClaudeDocApp));
+      root.render(<ClaudeDocApp />);
       console.log('✅ Supabase CLAUDE.md Platform rendered successfully!');
     } catch (error) {
       console.error('❌ Failed to render Supabase CLAUDE.md Platform:', error);

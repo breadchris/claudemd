@@ -25,8 +25,8 @@ export class ClaudeDocRepository {
       .from('claude_docs')
       .select(`
         *,
-        users!inner(username, avatar_url),
-        claude_doc_tags!inner(tags!inner(name))
+        users!inner(username),
+        claude_doc_tags(tags(name))
       `)
       .eq('is_public', true);
 
@@ -78,7 +78,7 @@ export class ClaudeDocRepository {
       .from('claude_docs')
       .select(`
         *,
-        users!inner(username, avatar_url),
+        users!inner(username),
         claude_doc_tags(tags(name)),
         claude_doc_stars(user_id)
       `)
@@ -107,15 +107,16 @@ export class ClaudeDocRepository {
     const { data, error } = await supabase
       .from('claude_docs')
       .insert({
+        id: crypto.randomUUID(),
         title: doc.title,
         description: doc.description,
         content: doc.content,
         user_id: userId,
-        is_public: doc.is_public
+        is_public: doc.is_public || false
       })
       .select(`
         *,
-        users!inner(username, avatar_url)
+        users!inner(username)
       `)
       .single();
 
@@ -147,14 +148,13 @@ export class ClaudeDocRepository {
         title: doc.title,
         description: doc.description,
         content: doc.content,
-        is_public: doc.is_public,
-        updated_at: new Date().toISOString()
+        is_public: doc.is_public
       })
       .eq('id', id)
       .eq('user_id', userId)
       .select(`
         *,
-        users!inner(username, avatar_url)
+        users!inner(username)
       `)
       .single();
 
@@ -193,7 +193,7 @@ export class ClaudeDocRepository {
       .from('claude_docs')
       .select(`
         *,
-        users!inner(username, avatar_url),
+        users!inner(username),
         claude_doc_tags(tags(name)),
         claude_doc_stars(user_id)
       `)
@@ -215,9 +215,15 @@ export class ClaudeDocRepository {
     
     if (error) {
       // Fallback to manual increment if RPC doesn't exist
+      const { data: currentDoc } = await supabase
+        .from('claude_docs')
+        .select('views')
+        .eq('id', id)
+        .single();
+      
       const { error: updateError } = await supabase
         .from('claude_docs')
-        .update({ views: supabase.raw('views + 1') })
+        .update({ views: (currentDoc?.views || 0) + 1 })
         .eq('id', id);
       
       if (updateError) {
@@ -234,9 +240,15 @@ export class ClaudeDocRepository {
     
     if (error) {
       // Fallback to manual increment if RPC doesn't exist
+      const { data: currentDoc } = await supabase
+        .from('claude_docs')
+        .select('downloads')
+        .eq('id', id)
+        .single();
+      
       const { error: updateError } = await supabase
         .from('claude_docs')
-        .update({ downloads: supabase.raw('downloads + 1') })
+        .update({ downloads: (currentDoc?.downloads || 0) + 1 })
         .eq('id', id);
       
       if (updateError) {
@@ -266,8 +278,7 @@ export class ClaudeDocRepository {
     const { error } = await supabase
       .from('claude_docs')
       .update({ 
-        is_public: newVisibility,
-        updated_at: new Date().toISOString()
+        is_public: newVisibility
       })
       .eq('id', id)
       .eq('user_id', userId);
@@ -305,6 +316,7 @@ export class ClaudeDocRepository {
         const { data: newTag, error: createError } = await supabase
           .from('tags')
           .insert({
+            id: crypto.randomUUID(),
             name: tagName,
             user_id: userId
           })
@@ -350,8 +362,8 @@ export class ClaudeDocRepository {
       user_id: data.user_id,
       is_public: data.is_public,
       downloads: data.downloads,
-      stars: data.stars,
-      views: data.views,
+      stars: data.stars || 0,
+      views: data.views || 0,
       author_name: data.users?.username || 'Unknown',
       author_username: data.users?.username || 'Unknown',
       is_starred: isStarred,

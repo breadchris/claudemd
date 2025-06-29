@@ -7,7 +7,7 @@ import type { User } from '../types/database';
 interface AuthContextType extends AuthState {
   signInWithGithub: (redirectTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: { username?: string; avatar_url?: string; email?: string }) => Promise<User>;
+  updateProfile: (updates: { username?: string; password?: string }) => Promise<User>;
   isUsernameAvailable: (username: string) => Promise<boolean>;
   generateUniqueUsername: (baseUsername: string) => Promise<string>;
   getUserStats: () => Promise<{
@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateProfile = async (updates: { username?: string; avatar_url?: string; email?: string }): Promise<User> => {
+  const updateProfile = async (updates: { username?: string; password?: string }): Promise<User> => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
       
@@ -280,13 +280,9 @@ export const AuthStatus: React.FC = () => {
   if (user) {
     return (
       <div className="flex items-center gap-3">
-        {user.avatar_url && (
-          <img 
-            src={user.avatar_url} 
-            alt={user.username}
-            className="w-6 h-6 rounded-full"
-          />
-        )}
+        <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600">
+          {user.username?.charAt(0).toUpperCase()}
+        </div>
         <span className="text-sm font-medium">@{user.username}</span>
         <button
           onClick={signOut}

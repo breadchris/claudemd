@@ -34,7 +34,7 @@ export class TagRepository {
       throw new Error(`Failed to fetch tags with count: ${error.message}`);
     }
 
-    return (data || []).map(tag => ({
+    return (data || []).map((tag: any) => ({
       ...tag,
       doc_count: tag.claude_doc_tags?.length || 0
     }));
@@ -116,6 +116,7 @@ export class TagRepository {
     const { data, error } = await supabase
       .from('tags')
       .insert({
+        id: crypto.randomUUID(),
         name: name.toLowerCase().trim(),
         color,
         user_id: userId
@@ -153,10 +154,7 @@ export class TagRepository {
   async update(id: string, updates: Partial<Pick<Tag, 'name' | 'color'>>, userId: string): Promise<Tag> {
     const { data, error } = await supabase
       .from('tags')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('id', id)
       .eq('user_id', userId) // Only allow updates by the creator
       .select('*')

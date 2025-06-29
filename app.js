@@ -2390,9 +2390,9 @@ var require_react_dom_development = __commonJS({
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart === "function") {
           __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
         }
-        var React7 = require_react();
+        var React6 = require_react();
         var Scheduler = require_scheduler();
-        var ReactSharedInternals = React7.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+        var ReactSharedInternals = React6.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
         var suppressWarning = false;
         function setSuppressWarning(newSuppressWarning) {
           {
@@ -3994,7 +3994,7 @@ var require_react_dom_development = __commonJS({
           {
             if (props.value == null) {
               if (typeof props.children === "object" && props.children !== null) {
-                React7.Children.forEach(props.children, function(child) {
+                React6.Children.forEach(props.children, function(child) {
                   if (child == null) {
                     return;
                   }
@@ -11856,7 +11856,7 @@ var require_react_dom_development = __commonJS({
           }
         }
         var fakeInternalInstance = {};
-        var emptyRefsObject = new React7.Component().refs;
+        var emptyRefsObject = new React6.Component().refs;
         var didWarnAboutStateAssignmentForComponent;
         var didWarnAboutUninitializedState;
         var didWarnAboutGetSnapshotBeforeUpdateWithoutDidUpdate;
@@ -24630,7 +24630,7 @@ var require_react_jsx_runtime_development = __commonJS({
     if (true) {
       (function() {
         "use strict";
-        var React7 = require_react();
+        var React6 = require_react();
         var REACT_ELEMENT_TYPE = Symbol.for("react.element");
         var REACT_PORTAL_TYPE = Symbol.for("react.portal");
         var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
@@ -24656,7 +24656,7 @@ var require_react_jsx_runtime_development = __commonJS({
           }
           return null;
         }
-        var ReactSharedInternals = React7.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+        var ReactSharedInternals = React6.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
         function error(format) {
           {
             {
@@ -25506,10 +25506,10 @@ var require_react_jsx_runtime_development = __commonJS({
             return jsxWithValidation(type, props, key, false);
           }
         }
-        var jsx6 = jsxWithValidationDynamic;
+        var jsx7 = jsxWithValidationDynamic;
         var jsxs6 = jsxWithValidationStatic;
         exports.Fragment = REACT_FRAGMENT_TYPE;
-        exports.jsx = jsx6;
+        exports.jsx = jsx7;
         exports.jsxs = jsxs6;
       })();
     }
@@ -25528,8 +25528,7 @@ var require_jsx_runtime = __commonJS({
   }
 });
 
-// index.ts
-var import_react10 = __toESM(require_react(), 1);
+// index.tsx
 var import_client = __toESM(require_client(), 1);
 
 // components/ClaudeDocApp.tsx
@@ -31662,8 +31661,8 @@ var ClaudeDocRepository = class {
     } = params;
     let supabaseQuery = supabase.from("claude_docs").select(`
         *,
-        users!inner(username, avatar_url),
-        claude_doc_tags!inner(tags!inner(name))
+        users!inner(username),
+        claude_doc_tags(tags(name))
       `).eq("is_public", true);
     if (query) {
       supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,description.ilike.%${query}%`);
@@ -31697,7 +31696,7 @@ var ClaudeDocRepository = class {
   async getById(id, userId) {
     const { data, error } = await supabase.from("claude_docs").select(`
         *,
-        users!inner(username, avatar_url),
+        users!inner(username),
         claude_doc_tags(tags(name)),
         claude_doc_stars(user_id)
       `).eq("id", id).single();
@@ -31717,14 +31716,15 @@ var ClaudeDocRepository = class {
    */
   async create(doc, userId) {
     const { data, error } = await supabase.from("claude_docs").insert({
+      id: crypto.randomUUID(),
       title: doc.title,
       description: doc.description,
       content: doc.content,
       user_id: userId,
-      is_public: doc.is_public
+      is_public: doc.is_public || false
     }).select(`
         *,
-        users!inner(username, avatar_url)
+        users!inner(username)
       `).single();
     if (error) {
       throw new Error(`Failed to create document: ${error.message}`);
@@ -31746,11 +31746,10 @@ var ClaudeDocRepository = class {
       title: doc.title,
       description: doc.description,
       content: doc.content,
-      is_public: doc.is_public,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      is_public: doc.is_public
     }).eq("id", id).eq("user_id", userId).select(`
         *,
-        users!inner(username, avatar_url)
+        users!inner(username)
       `).single();
     if (error) {
       throw new Error(`Failed to update document: ${error.message}`);
@@ -31774,7 +31773,7 @@ var ClaudeDocRepository = class {
   async getByUserId(userId) {
     const { data, error } = await supabase.from("claude_docs").select(`
         *,
-        users!inner(username, avatar_url),
+        users!inner(username),
         claude_doc_tags(tags(name)),
         claude_doc_stars(user_id)
       `).eq("user_id", userId).order("created_at", { ascending: false });
@@ -31789,7 +31788,8 @@ var ClaudeDocRepository = class {
   async incrementViews(id) {
     const { error } = await supabase.rpc("increment_views", { doc_id: id });
     if (error) {
-      const { error: updateError } = await supabase.from("claude_docs").update({ views: supabase.raw("views + 1") }).eq("id", id);
+      const { data: currentDoc } = await supabase.from("claude_docs").select("views").eq("id", id).single();
+      const { error: updateError } = await supabase.from("claude_docs").update({ views: (currentDoc?.views || 0) + 1 }).eq("id", id);
       if (updateError) {
         console.error("Failed to increment views:", updateError);
       }
@@ -31801,7 +31801,8 @@ var ClaudeDocRepository = class {
   async incrementDownloads(id) {
     const { error } = await supabase.rpc("increment_downloads", { doc_id: id });
     if (error) {
-      const { error: updateError } = await supabase.from("claude_docs").update({ downloads: supabase.raw("downloads + 1") }).eq("id", id);
+      const { data: currentDoc } = await supabase.from("claude_docs").select("downloads").eq("id", id).single();
+      const { error: updateError } = await supabase.from("claude_docs").update({ downloads: (currentDoc?.downloads || 0) + 1 }).eq("id", id);
       if (updateError) {
         console.error("Failed to increment downloads:", updateError);
       }
@@ -31817,8 +31818,7 @@ var ClaudeDocRepository = class {
     }
     const newVisibility = !currentDoc.is_public;
     const { error } = await supabase.from("claude_docs").update({
-      is_public: newVisibility,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      is_public: newVisibility
     }).eq("id", id).eq("user_id", userId);
     if (error) {
       throw new Error(`Failed to update visibility: ${error.message}`);
@@ -31835,6 +31835,7 @@ var ClaudeDocRepository = class {
       let { data: tag, error } = await supabase.from("tags").select("id").eq("name", tagName).single();
       if (error && error.code === "PGRST116") {
         const { data: newTag, error: createError } = await supabase.from("tags").insert({
+          id: crypto.randomUUID(),
           name: tagName,
           user_id: userId
         }).select("id").single();
@@ -31869,8 +31870,8 @@ var ClaudeDocRepository = class {
       user_id: data.user_id,
       is_public: data.is_public,
       downloads: data.downloads,
-      stars: data.stars,
-      views: data.views,
+      stars: data.stars || 0,
+      views: data.views || 0,
       author_name: data.users?.username || "Unknown",
       author_username: data.users?.username || "Unknown",
       is_starred: isStarred,
@@ -31893,6 +31894,7 @@ var StarRepository = class {
       return true;
     }
     const { error } = await supabase.from("claude_doc_stars").insert({
+      id: crypto.randomUUID(),
       claude_doc_id: docId,
       user_id: userId
     });
@@ -32071,6 +32073,7 @@ var TagRepository = class {
    */
   async create(name, userId, color) {
     const { data, error } = await supabase.from("tags").insert({
+      id: crypto.randomUUID(),
       name: name.toLowerCase().trim(),
       color,
       user_id: userId
@@ -32095,10 +32098,7 @@ var TagRepository = class {
    * Update a tag
    */
   async update(id, updates, userId) {
-    const { data, error } = await supabase.from("tags").update({
-      ...updates,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", id).eq("user_id", userId).select("*").single();
+    const { data, error } = await supabase.from("tags").update(updates).eq("id", id).eq("user_id", userId).select("*").single();
     if (error) {
       throw new Error(`Failed to update tag: ${error.message}`);
     }
@@ -32207,8 +32207,7 @@ var UserRepository = class {
     const { data, error } = await supabase.from("users").insert({
       id: userData.id,
       username: userData.username,
-      email: userData.email,
-      avatar_url: userData.avatar_url
+      password: userData.password
     }).select("*").single();
     if (error) {
       throw new Error(`Failed to create user: ${error.message}`);
@@ -32219,10 +32218,7 @@ var UserRepository = class {
    * Update user profile
    */
   async update(id, updates) {
-    const { data, error } = await supabase.from("users").update({
-      ...updates,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", id).select("*").single();
+    const { data, error } = await supabase.from("users").update(updates).eq("id", id).select("*").single();
     if (error) {
       throw new Error(`Failed to update user: ${error.message}`);
     }
@@ -32278,9 +32274,9 @@ var UserRepository = class {
       total_docs: docs.length,
       public_docs: docs.filter((doc) => doc.is_public).length,
       private_docs: docs.filter((doc) => !doc.is_public).length,
-      total_stars: docs.reduce((sum, doc) => sum + doc.stars, 0),
-      total_views: docs.reduce((sum, doc) => sum + doc.views, 0),
-      total_downloads: docs.reduce((sum, doc) => sum + doc.downloads, 0)
+      total_stars: docs.reduce((sum, doc) => sum + (doc.stars || 0), 0),
+      total_views: docs.reduce((sum, doc) => sum + (doc.views || 0), 0),
+      total_downloads: docs.reduce((sum, doc) => sum + (doc.downloads || 0), 0)
     };
   }
   /**
@@ -32314,9 +32310,7 @@ var UserRepository = class {
       }
       user = await this.create({
         id: authUser.id,
-        username: finalUsername,
-        email: authUser.email,
-        avatar_url: authUser.user_metadata?.avatar_url
+        username: finalUsername
       });
     }
     return user;
@@ -33454,14 +33448,7 @@ var AuthStatus = () => {
   }
   if (user) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex items-center gap-3", children: [
-      user.avatar_url && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "img",
-        {
-          src: user.avatar_url,
-          alt: user.username,
-          className: "w-6 h-6 rounded-full"
-        }
-      ),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600", children: user.username?.charAt(0).toUpperCase() }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "text-sm font-medium", children: [
         "@",
         user.username
@@ -34989,14 +34976,15 @@ var useDocumentListRealtime = (onDocumentChange) => {
   );
 };
 
-// index.ts
+// index.tsx
+var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 if (typeof document !== "undefined") {
   const rootElement = document.getElementById("root");
   if (rootElement) {
     console.log("\u{1F680} Initializing Supabase CLAUDE.md Platform...");
     try {
       const root = (0, import_client.createRoot)(rootElement);
-      root.render(import_react10.default.createElement(ClaudeDocApp));
+      root.render(/* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ClaudeDocApp, {}));
       console.log("\u2705 Supabase CLAUDE.md Platform rendered successfully!");
     } catch (error) {
       console.error("\u274C Failed to render Supabase CLAUDE.md Platform:", error);

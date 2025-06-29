@@ -76,7 +76,7 @@ Generate optimized production build.
 - **`GET /module/{path}`** - Serves TypeScript/React files as compiled ES modules
   - Automatically handles TypeScript compilation
   - Supports JSX/TSX files with React 18
-  - Example: `/module/index.ts`
+  - Example: `/module/index.tsx`
   - Use for importing components in the browser
 
 ## 🏗️ esbuild Configuration
@@ -165,7 +165,7 @@ supabase/
 ├── hooks/              # Custom React hooks
 ├── services/           # Business logic layer
 ├── types/              # TypeScript type definitions
-└── index.ts            # Main application entry point
+└── index.tsx            # Main application entry point
 ```
 
 ## 🔍 Debugging
@@ -180,7 +180,7 @@ http://localhost:3001/render/components/ClaudeDocApp.tsx
 ### Module Inspection
 ```bash
 # View compiled modules
-http://localhost:3001/module/index.ts
+http://localhost:3001/module/index.tsx
 http://localhost:3001/module/demo/ErrorTestDemo.tsx
 ```
 
@@ -214,7 +214,7 @@ open http://localhost:3001
 open http://localhost:3001/render/demo/TestApp.tsx?component=TestApp
 
 # 4. Inspect compiled modules
-curl http://localhost:3001/module/index.ts
+curl http://localhost:3001/module/index.tsx
 ```
 
 ### Production Workflow

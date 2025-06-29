@@ -48,16 +48,14 @@ export class UserRepository {
   async create(userData: {
     id: string;
     username: string;
-    email?: string;
-    avatar_url?: string;
+    password?: string;
   }): Promise<User> {
     const { data, error } = await supabase
       .from('users')
       .insert({
         id: userData.id,
         username: userData.username,
-        email: userData.email,
-        avatar_url: userData.avatar_url
+        password: userData.password
       })
       .select('*')
       .single();
@@ -72,13 +70,10 @@ export class UserRepository {
   /**
    * Update user profile
    */
-  async update(id: string, updates: Partial<Pick<User, 'username' | 'avatar_url' | 'email'>>): Promise<User> {
+  async update(id: string, updates: Partial<Pick<User, 'username' | 'password'>>): Promise<User> {
     const { data, error } = await supabase
       .from('users')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('id', id)
       .select('*')
       .single();
@@ -176,9 +171,9 @@ export class UserRepository {
       total_docs: docs.length,
       public_docs: docs.filter(doc => doc.is_public).length,
       private_docs: docs.filter(doc => !doc.is_public).length,
-      total_stars: docs.reduce((sum, doc) => sum + doc.stars, 0),
-      total_views: docs.reduce((sum, doc) => sum + doc.views, 0),
-      total_downloads: docs.reduce((sum, doc) => sum + doc.downloads, 0)
+      total_stars: docs.reduce((sum, doc) => sum + (doc.stars || 0), 0),
+      total_views: docs.reduce((sum, doc) => sum + (doc.views || 0), 0),
+      total_downloads: docs.reduce((sum, doc) => sum + (doc.downloads || 0), 0)
     };
   }
 
@@ -211,9 +206,7 @@ export class UserRepository {
    */
   async findOrCreateFromAuth(authUser: {
     id: string;
-    email?: string;
     user_metadata?: {
-      avatar_url?: string;
       user_name?: string;
       username?: string;
       full_name?: string;
@@ -242,9 +235,7 @@ export class UserRepository {
       // Create new user
       user = await this.create({
         id: authUser.id,
-        username: finalUsername,
-        email: authUser.email,
-        avatar_url: authUser.user_metadata?.avatar_url
+        username: finalUsername
       });
     }
     

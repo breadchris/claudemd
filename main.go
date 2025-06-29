@@ -66,7 +66,7 @@ func buildCommand(c *cli.Context) error {
 	buildDir := "./"
 
 	// Build main app bundle
-	result := buildWithEsbuild("./index.ts", filepath.Join(buildDir, "app.js"), true)
+	result := buildWithEsbuild("./index.tsx", filepath.Join(buildDir, "app.js"), true)
 
 	if len(result.Errors) > 0 {
 		fmt.Println("❌ Production build failed:")
@@ -190,7 +190,7 @@ func serveSupabaseApp(w http.ResponseWriter, r *http.Request) {
             console.log('🚀 Loading Supabase CLAUDE.md Platform...');
             
             // Import the main Supabase app component
-            const appModule = await import('/module/index.ts');
+            const appModule = await import('/module/index.tsx');
             
             // Import React and ReactDOM
             const React = await import('react');
@@ -485,7 +485,7 @@ func buildAsESModule(sourceCode, resolveDir, sourcefile string) api.BuildResult 
 		JSXImportSource: "react",
 		LogLevel:        api.LogLevelSilent,
 		// Bundle all dependencies for self-contained production build
-		External: []string{},
+		External: []string{"react", "react-dom", "react/jsx-runtime", "@supabase/supabase-js"},
 		TsconfigRaw: `{
 			"compilerOptions": {
 				"jsx": "react-jsx",
