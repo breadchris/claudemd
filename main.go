@@ -1,15 +1,30 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/breadchris/share/db"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/urfave/cli/v2"
 )
+
+// Global configuration manager for pinned documents
+var configManager *db.ConfigManager[db.PinnedDocsConfig]
+
+func init() {
+	// Initialize the configuration manager
+	var err error
+	configDir := filepath.Join(".", "data", "config")
+	configManager, err = db.NewConfigManager[db.PinnedDocsConfig](configDir)
+	if err != nil {
+		fmt.Printf("Warning: Failed to initialize config manager: %v\n", err)
+	}
+}
 
 func main() {
 	app := &cli.App{
@@ -55,6 +70,9 @@ func serveCommand(c *cli.Context) error {
 	fmt.Printf("   • GET  /              - Main Supabase CLAUDE.md app\n")
 	fmt.Printf("   • GET  /render/{path} - Component debugging\n")
 	fmt.Printf("   • GET  /module/{path} - ES module serving\n")
+	fmt.Printf("   • GET  /api/config/pinned-docs - Get pinned documents\n")
+	fmt.Printf("   • POST /api/config/pinned-docs - Update pinned documents\n")
+	fmt.Printf("   • PUT  /api/config/pinned-docs/{id} - Toggle pin status\n")
 
 	return http.ListenAndServe(":"+port, mux)
 }
@@ -104,6 +122,10 @@ func createHTTPServer() *http.ServeMux {
 
 	// ES Module endpoint for serving compiled JavaScript
 	mux.HandleFunc("/module/", handleServeModule)
+
+	// Configuration API endpoints
+	mux.HandleFunc("/api/config/pinned-docs", handlePinnedDocsConfig)
+	mux.HandleFunc("/api/config/pinned-docs/", handlePinnedDocsToggle)
 
 	return mux
 }
@@ -643,4 +665,105 @@ func generateProductionHTML() string {
     <script type="module" src="./app.js"></script>
 </body>
 </html>`
+}
+
+// handlePinnedDocsConfig handles GET and POST requests for pinned documents configuration
+func handlePinnedDocsConfig(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	// Handle preflight requests
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if configManager == nil {
+		http.Error(w, "Configuration manager not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		// Get current pinned documents configuration
+		config := configManager.GetConfig("pinned-docs", db.DefaultPinnedDocsConfig())
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(config)
+
+	case "POST":
+		// Update pinned documents configuration
+		var newConfig db.PinnedDocsConfig
+		if err := json.NewDecoder(r.Body).Decode(&newConfig); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+
+		if err := configManager.SetConfig("pinned-docs", newConfig); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to save configuration: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(newConfig)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handlePinnedDocsToggle handles PUT requests to toggle pin status for a specific document
+func handlePinnedDocsToggle(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "PUT, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	
+	// Handle preflight requests
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "PUT" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if configManager == nil {
+		http.Error(w, "Configuration manager not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// Extract document ID from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/config/pinned-docs/")
+	docID := strings.Trim(path, "/")
+	
+	if docID == "" {
+		http.Error(w, "Document ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Toggle pin status
+	var isPinned bool
+	err := configManager.UpdateConfig("pinned-docs", db.DefaultPinnedDocsConfig(), func(config db.PinnedDocsConfig) db.PinnedDocsConfig {
+		isPinned = config.TogglePin(docID)
+		return config
+	})
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update configuration: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated status
+	response := map[string]interface{}{
+		"docId":    docID,
+		"isPinned": isPinned,
+		"success":  true,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
