@@ -1,30 +1,17 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/breadchris/share/db"
+	"github.com/breadchris/share/coderunner"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/urfave/cli/v2"
 )
 
-// Global configuration manager for pinned documents
-var configManager *db.ConfigManager[db.PinnedDocsConfig]
-
-func init() {
-	// Initialize the configuration manager
-	var err error
-	configDir := filepath.Join(".", "data", "config")
-	configManager, err = db.NewConfigManager[db.PinnedDocsConfig](configDir)
-	if err != nil {
-		fmt.Printf("Warning: Failed to initialize config manager: %v\n", err)
-	}
-}
 
 func main() {
 	app := &cli.App{
@@ -70,9 +57,6 @@ func serveCommand(c *cli.Context) error {
 	fmt.Printf("   • GET  /              - Main Supabase CLAUDE.md app\n")
 	fmt.Printf("   • GET  /render/{path} - Component debugging\n")
 	fmt.Printf("   • GET  /module/{path} - ES module serving\n")
-	fmt.Printf("   • GET  /api/config/pinned-docs - Get pinned documents\n")
-	fmt.Printf("   • POST /api/config/pinned-docs - Update pinned documents\n")
-	fmt.Printf("   • PUT  /api/config/pinned-docs/{id} - Toggle pin status\n")
 
 	return http.ListenAndServe(":"+port, mux)
 }
@@ -115,7 +99,9 @@ func createHTTPServer() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Main Supabase CLAUDE.md app page
-	mux.HandleFunc("/", serveSupabaseApp)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		coderunner.ServeReactApp(w, r, "supabase/index.tsx", "ClaudeDocApp")
+	})
 
 	// Component renderer endpoint for debugging
 	mux.HandleFunc("/render/", handleRenderComponent)
@@ -123,142 +109,10 @@ func createHTTPServer() *http.ServeMux {
 	// ES Module endpoint for serving compiled JavaScript
 	mux.HandleFunc("/module/", handleServeModule)
 
-	// Configuration API endpoints
-	mux.HandleFunc("/api/config/pinned-docs", handlePinnedDocsConfig)
-	mux.HandleFunc("/api/config/pinned-docs/", handlePinnedDocsToggle)
 
 	return mux
 }
 
-// serveSupabaseApp serves the main Supabase CLAUDE.md application
-func serveSupabaseApp(w http.ResponseWriter, r *http.Request) {
-	htmlContent := `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase CLAUDE.md Platform</title>
-    
-    <!-- Import maps for modern ES modules -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18",
-            "react-dom": "https://esm.sh/react-dom@18",
-            "react-dom/client": "https://esm.sh/react-dom@18/client",
-            "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime",
-            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
-        }
-    }
-    </script>
-    
-    <!-- Tailwind CSS and DaisyUI for styling -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daisyui@5">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    
-    <!-- Global styles -->
-    <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: #f9fafb;
-        }
-        #root { 
-            width: 100%; 
-            min-height: 100vh; 
-        }
-        .error { 
-            padding: 20px; 
-            color: #dc2626; 
-            background: #fef2f2; 
-            border: 1px solid #fecaca; 
-            margin: 20px; 
-            border-radius: 8px;
-            font-family: monospace;
-        }
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            gap: 12px;
-        }
-        .spinner {
-            border: 2px solid #f3f4f6;
-            border-top: 2px solid #3b82f6;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div id="root">
-        <div class="loading">
-            <div class="spinner"></div>
-            <span>Loading Supabase CLAUDE.md Platform...</span>
-        </div>
-    </div>
-    
-    <script type="module">
-        try {
-            console.log('🚀 Loading Supabase CLAUDE.md Platform...');
-            
-            // Import the main Supabase app component
-            const appModule = await import('/module/index.tsx');
-            
-            // Import React and ReactDOM
-            const React = await import('react');
-            const ReactDOM = await import('react-dom/client');
-            
-            console.log('📦 Modules loaded successfully');
-            
-            // Get the main app component (ClaudeDocApp is the default export)
-            const App = appModule.default || appModule.ClaudeDocApp;
-            
-            if (!App) {
-                throw new Error('No default export found in Supabase app module');
-            }
-            
-            console.log('🎨 Rendering Supabase CLAUDE.md Platform...');
-            
-            // Render the application
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(React.createElement(App));
-            
-            console.log('✅ Supabase CLAUDE.md Platform loaded successfully!');
-            
-        } catch (error) {
-            console.error('❌ Failed to load Supabase CLAUDE.md Platform:', error);
-            
-            document.getElementById('root').innerHTML = 
-                '<div class="error">' +
-                '<h3>🚨 Error Loading Supabase CLAUDE.md Platform</h3>' +
-                '<p><strong>Error:</strong> ' + error.message + '</p>' +
-                '<pre>' + (error.stack || '') + '</pre>' +
-                '<h4>🔧 Troubleshooting:</h4>' +
-                '<ul>' +
-                '<li>Check that all TypeScript files compile correctly</li>' +
-                '<li>Verify Supabase configuration in SupabaseClient.ts</li>' +
-                '<li>Ensure all dependencies are properly imported</li>' +
-                '<li>Check browser console for additional error details</li>' +
-                '</ul>' +
-                '</div>';
-        }
-    </script>
-</body>
-</html>`
-
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(htmlContent))
-}
 
 // handleRenderComponent builds and renders a React component in a simple HTML page
 func handleRenderComponent(w http.ResponseWriter, r *http.Request) {
@@ -642,128 +496,39 @@ func generateComponentHTML(componentName, componentPath string) string {
 
 // generateProductionHTML creates the production HTML for the Supabase app
 func generateProductionHTML() string {
-	return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase CLAUDE.md Platform</title>
-    
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daisyui@5">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body>
-    <div id="root">
-        <div class="loading">
-            <div class="spinner"></div>
-            <div>Loading Supabase CLAUDE.md Platform...</div>
-        </div>
-    </div>
-    
-    <!-- Self-contained bundled application -->
-    <script type="module" src="./app.js"></script>
-</body>
-</html>`
+	// Use a simple buffer to capture the output
+	var htmlContent string
+	
+	// Create a mock ResponseWriter to capture HTML content
+	mockWriter := &mockResponseWriter{}
+	mockRequest := &http.Request{}
+	
+	// Use the reusable production function
+	coderunner.ServeReactAppProduction(mockWriter, mockRequest, "./app.js")
+	
+	htmlContent = mockWriter.content
+	return htmlContent
 }
 
-// handlePinnedDocsConfig handles GET and POST requests for pinned documents configuration
-func handlePinnedDocsConfig(w http.ResponseWriter, r *http.Request) {
-	// Set CORS headers
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	
-	// Handle preflight requests
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	if configManager == nil {
-		http.Error(w, "Configuration manager not initialized", http.StatusInternalServerError)
-		return
-	}
-
-	switch r.Method {
-	case "GET":
-		// Get current pinned documents configuration
-		config := configManager.GetConfig("pinned-docs", db.DefaultPinnedDocsConfig())
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(config)
-
-	case "POST":
-		// Update pinned documents configuration
-		var newConfig db.PinnedDocsConfig
-		if err := json.NewDecoder(r.Body).Decode(&newConfig); err != nil {
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
-			return
-		}
-
-		if err := configManager.SetConfig("pinned-docs", newConfig); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to save configuration: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(newConfig)
-
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+// mockResponseWriter is a simple implementation to capture HTML content
+type mockResponseWriter struct {
+	content string
+	headers http.Header
 }
 
-// handlePinnedDocsToggle handles PUT requests to toggle pin status for a specific document
-func handlePinnedDocsToggle(w http.ResponseWriter, r *http.Request) {
-	// Set CORS headers
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "PUT, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	
-	// Handle preflight requests
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusOK)
-		return
+func (m *mockResponseWriter) Header() http.Header {
+	if m.headers == nil {
+		m.headers = make(http.Header)
 	}
-
-	if r.Method != "PUT" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if configManager == nil {
-		http.Error(w, "Configuration manager not initialized", http.StatusInternalServerError)
-		return
-	}
-
-	// Extract document ID from URL path
-	path := strings.TrimPrefix(r.URL.Path, "/api/config/pinned-docs/")
-	docID := strings.Trim(path, "/")
-	
-	if docID == "" {
-		http.Error(w, "Document ID is required", http.StatusBadRequest)
-		return
-	}
-
-	// Toggle pin status
-	var isPinned bool
-	err := configManager.UpdateConfig("pinned-docs", db.DefaultPinnedDocsConfig(), func(config db.PinnedDocsConfig) db.PinnedDocsConfig {
-		isPinned = config.TogglePin(docID)
-		return config
-	})
-
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update configuration: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the updated status
-	response := map[string]interface{}{
-		"docId":    docID,
-		"isPinned": isPinned,
-		"success":  true,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	return m.headers
 }
+
+func (m *mockResponseWriter) Write(data []byte) (int, error) {
+	m.content += string(data)
+	return len(data), nil
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	// No-op for mock
+}
+
