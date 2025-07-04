@@ -21,7 +21,7 @@ export function useSessions(options: UseSessionsOptions = {}) {
     try {
       setLoading(true);
       setError(null);
-      const data = await sessionRepository.getRecentSessions(limit);
+      const data = await sessionRepository.getRecentSessions(user?.id, limit);
       setSessions(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sessions');
@@ -29,7 +29,7 @@ export function useSessions(options: UseSessionsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, user?.id]);
 
   const searchSessions = useCallback(async (searchTerm: string) => {
     try {
@@ -54,18 +54,16 @@ export function useSessions(options: UseSessionsOptions = {}) {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Set up real-time subscription
+  // Optional: Set up auto-refresh interval
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const subscription = sessionRepository.subscribeToSessions((payload) => {
-      console.log('Session updated:', payload);
-      // Refresh sessions when changes occur
+    const interval = setInterval(() => {
       refreshSessions();
-    });
+    }, 30000); // Refresh every 30 seconds
 
     return () => {
-      subscription.unsubscribe();
+      clearInterval(interval);
     };
   }, [autoRefresh, refreshSessions]);
 
@@ -89,7 +87,7 @@ export function useSession(sessionId: string) {
     try {
       setLoading(true);
       setError(null);
-      const data = await sessionRepository.getSessionBySessionId(sessionId);
+      const data = await sessionRepository.getBySessionId(sessionId);
       setSession(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch session');
