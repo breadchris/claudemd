@@ -1,2 +1,3 @@
-data/
+ignored/
 node_modules/
+.temp/

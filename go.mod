@@ -3,12 +3,10 @@ module github.com/breadchris/claudemd
 go 1.23.1
 
 require (
-	github.com/evanw/esbuild v0.25.5
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/uuid v1.6.0
+	github.com/lib/pq v1.10.9
 	github.com/urfave/cli/v2 v2.27.7
-	gorm.io/driver/postgres v1.5.9
-	gorm.io/gorm v1.25.12
 )
 
 require (

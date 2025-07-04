@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,9 +13,8 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/urfave/cli/v2"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 type SessionMessage struct {
@@ -25,23 +25,23 @@ type SessionMessage struct {
 
 // ClaudeSession represents a Claude Code session stored in PostgreSQL
 type ClaudeSession struct {
-	ID        string                 `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	SessionID string                 `json:"session_id" gorm:"uniqueIndex;not null"`
-	UserID    *string                `json:"user_id,omitempty" gorm:"type:uuid"`
-	Title     string                 `json:"title" gorm:"not null"`
-	Messages  []SessionMessage       `json:"messages" gorm:"type:jsonb;serializer:json"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json"`
-	CreatedAt time.Time              `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        string                 `json:"id"`
+	SessionID string                 `json:"session_id"`
+	UserID    *string                `json:"user_id,omitempty"`
+	Title     string                 `json:"title"`
+	Messages  []SessionMessage       `json:"messages"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
 }
 
 type ClaudeSessionSync struct {
-	db          *gorm.DB
+	db          *sql.DB
 	claudeDir   string
 	syncedFiles map[string]time.Time
 }
 
-func NewClaudeSessionSync(db *gorm.DB) *ClaudeSessionSync {
+func NewClaudeSessionSync(db *sql.DB) *ClaudeSessionSync {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("Failed to get home directory: %v", err)
@@ -169,6 +169,11 @@ func (c *ClaudeSessionSync) syncFile(filePath string) error {
 	var title string
 
 	scanner := bufio.NewScanner(file)
+	// Increase buffer size to handle large JSON lines (10MB max)
+	const maxTokenSize = 10 * 1024 * 1024 // 10MB
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, maxTokenSize)
+	
 	lineCount := 0
 	for scanner.Scan() {
 		lineCount++
@@ -219,23 +224,42 @@ func (c *ClaudeSessionSync) syncFile(filePath string) error {
 }
 
 func (c *ClaudeSessionSync) upsertSession(session ClaudeSession) error {
-	// Check if session already exists
-	var existing ClaudeSession
-	result := c.db.Where("session_id = ?", session.SessionID).First(&existing)
-
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			// Create new session
-			session.ID = uuid.NewString()
-			return c.db.Create(&session).Error
-		}
-		return result.Error
+	// Serialize messages and metadata to JSON
+	messagesJSON, err := json.Marshal(session.Messages)
+	if err != nil {
+		return fmt.Errorf("failed to marshal messages: %w", err)
 	}
 
-	// Update existing session
-	session.ID = existing.ID
-	session.CreatedAt = existing.CreatedAt
-	return c.db.Model(&existing).Updates(session).Error
+	metadataJSON, err := json.Marshal(session.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+
+	// Use PostgreSQL UPSERT (INSERT ... ON CONFLICT)
+	query := `
+		INSERT INTO claude_sessions (id, session_id, user_id, title, messages, metadata, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (session_id) DO UPDATE SET
+			title = EXCLUDED.title,
+			messages = EXCLUDED.messages,
+			metadata = EXCLUDED.metadata,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id, created_at`
+
+	now := time.Now()
+	sessionID := session.ID
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
+
+	var returnedID string
+	var createdAt time.Time
+	err = c.db.QueryRow(query, sessionID, session.SessionID, session.UserID, session.Title, string(messagesJSON), string(metadataJSON), now, now).Scan(&returnedID, &createdAt)
+	if err != nil {
+		return fmt.Errorf("failed to upsert session: %w", err)
+	}
+
+	return nil
 }
 
 // SyncAll performs a full sync of all Claude sessions
@@ -244,19 +268,63 @@ func (c *ClaudeSessionSync) SyncAll() error {
 }
 
 // InitializeDatabase sets up the database connection and runs migrations
-func InitializeDatabase(config *Config) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(config.DatabaseURL), &gorm.Config{})
+func InitializeDatabase(config *Config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Auto-migrate the schema
-	if err := db.AutoMigrate(&ClaudeSession{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// Create the table if it doesn't exist
+	if err := createClaudeSessionsTable(db); err != nil {
+		return nil, fmt.Errorf("failed to create table: %w", err)
 	}
 
 	log.Println("Database connection established and migrations completed")
 	return db, nil
+}
+
+// createClaudeSessionsTable creates the claude_sessions table if it doesn't exist
+func createClaudeSessionsTable(db *sql.DB) error {
+	query := `
+		CREATE TABLE IF NOT EXISTS claude_sessions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			session_id VARCHAR(255) UNIQUE NOT NULL,
+			user_id UUID,
+			title TEXT NOT NULL,
+			messages JSONB NOT NULL DEFAULT '[]',
+			metadata JSONB DEFAULT '{}',
+			created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+		);
+
+		-- Create indexes for better performance
+		CREATE INDEX IF NOT EXISTS idx_claude_sessions_session_id ON claude_sessions(session_id);
+		CREATE INDEX IF NOT EXISTS idx_claude_sessions_user_id ON claude_sessions(user_id);
+		CREATE INDEX IF NOT EXISTS idx_claude_sessions_created_at ON claude_sessions(created_at);
+		CREATE INDEX IF NOT EXISTS idx_claude_sessions_title_gin ON claude_sessions USING gin(to_tsvector('english', title));
+
+		-- Create trigger for updating updated_at timestamp
+		CREATE OR REPLACE FUNCTION update_updated_at_column()
+		RETURNS TRIGGER AS $$
+		BEGIN
+			NEW.updated_at = NOW();
+			RETURN NEW;
+		END;
+		$$ language 'plpgsql';
+
+		DROP TRIGGER IF EXISTS update_claude_sessions_updated_at ON claude_sessions;
+		CREATE TRIGGER update_claude_sessions_updated_at
+			BEFORE UPDATE ON claude_sessions
+			FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+	`
+
+	_, err := db.Exec(query)
+	return err
 }
 
 // CLI command to sync Claude sessions

@@ -13,7 +13,7 @@ type Config struct {
 
 // LoadConfig loads configuration from data/config.json
 func LoadConfig() (*Config, error) {
-	configPath := filepath.Join("data", "config.json")
+	configPath := filepath.Join("ignored", "config.json")
 	
 	// Check if config file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
