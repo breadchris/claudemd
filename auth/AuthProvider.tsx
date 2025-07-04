@@ -3,6 +3,7 @@ import { AuthService } from '../services';
 import type { AuthState } from '../services';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import type { User } from '../types/database';
+import { checkDatabaseHealth } from '../data/SupabaseClient';
 
 interface AuthContextType extends AuthState {
   signInWithGithub: (redirectTo?: string) => Promise<void>;
@@ -104,6 +105,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔄 Auth: Initializing authentication...');
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      
+      // First check database health
+      const healthCheck = await checkDatabaseHealth();
+      if (!healthCheck.healthy) {
+        throw new Error(`Database connectivity issue: ${healthCheck.error}`);
+      }
       
       const session = await authService.getCurrentSession();
       console.log('🔍 Auth: Retrieved session:', session ? 'Found' : 'None');

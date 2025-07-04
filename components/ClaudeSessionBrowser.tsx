@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSessions } from '../hooks/useSessions';
-import { SessionRepository } from '../data/SessionRepository';
+import { SessionRepository, type SessionSummary } from '../data/SessionRepository';
 import { useAuth } from '../auth';
 import type { ClaudeSession } from '../types/session';
 import { ClaudeSessionViewer } from './ClaudeSessionViewer';
@@ -18,12 +18,47 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedSession, setSelectedSession] = useState<ClaudeSession | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [initialSessionId, setInitialSessionId] = useState<string | null>(null);
   
   const sessionRepository = new SessionRepository();
   const { sessions, loading, error, refreshSessions, searchSessions } = useSessions({
     autoRefresh: false,
     limit: 50
   });
+
+  // Handle URL parameters for session sharing
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    if (sessionId && !selectedSession) {
+      setInitialSessionId(sessionId);
+      // Find and load the session from the list
+      const foundSession = sessions.find(s => s.session_id === sessionId);
+      if (foundSession) {
+        // Load the full session if we only have a summary
+        if (!('messages' in foundSession)) {
+          sessionRepository.getBySessionId(sessionId).then(session => {
+            if (session) {
+              setSelectedSession(session);
+            }
+          }).catch(error => {
+            console.error('Failed to load full session from URL:', error);
+          });
+        } else {
+          setSelectedSession(foundSession as ClaudeSession);
+        }
+      } else {
+        // If session not in current list, load it directly
+        sessionRepository.getBySessionId(sessionId).then(session => {
+          if (session) {
+            setSelectedSession(session);
+          }
+        }).catch(error => {
+          console.error('Failed to load session from URL:', error);
+        });
+      }
+    }
+  }, [sessions, selectedSession, sessionRepository]);
 
   // Handle search
   const handleSearch = useCallback(async (query: string) => {
@@ -37,10 +72,26 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
   }, [searchSessions, refreshSessions]);
 
   // Handle session selection
-  const handleSessionSelect = (session: ClaudeSession) => {
-    setSelectedSession(session);
-    if (onViewSession) {
-      onViewSession(session.session_id);
+  const handleSessionSelect = async (session: ClaudeSession | SessionSummary) => {
+    // If it's a summary, we need to load the full session
+    if (!('messages' in session)) {
+      try {
+        const fullSession = await sessionRepository.getBySessionId(session.session_id);
+        if (fullSession) {
+          setSelectedSession(fullSession);
+          if (onViewSession) {
+            onViewSession(session.session_id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load full session:', error);
+      }
+    } else {
+      // It's already a full session
+      setSelectedSession(session as ClaudeSession);
+      if (onViewSession) {
+        onViewSession(session.session_id);
+      }
     }
   };
 
@@ -50,7 +101,7 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
   };
 
   // Get first user message for preview
-  const getFirstUserMessage = (session: ClaudeSession): string => {
+  const getFirstUserMessage = (session: ClaudeSession | SessionSummary): string => {
     return sessionRepository.getFirstUserMessage(session);
   };
 
@@ -70,6 +121,7 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
     return (
       <ClaudeSessionViewer 
         initialSessionId={selectedSession.session_id}
+        onBack={handleBackToList}
       />
     );
   }
@@ -248,7 +300,11 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
                     </h3>
                     <div className="flex items-center gap-1 ml-2">
                       <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {session.messages?.length || 0} msg{(session.messages?.length || 0) !== 1 ? 's' : ''}
+                        {(() => {
+                          const count = 'message_count' in session ? session.message_count : 
+                                       ('messages' in session && session.messages) ? session.messages.length : 0;
+                          return `${count} msg${count !== 1 ? 's' : ''}`;
+                        })()}
                       </span>
                     </div>
                   </div>

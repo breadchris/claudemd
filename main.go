@@ -264,15 +264,16 @@ func buildWithEsbuild(inputPath, outputPath string, writeToDisk bool) api.BuildR
 			".tsx": api.LoaderTSX,
 			".css": api.LoaderCSS,
 		},
-		Outfile:         outputPath,
-		Format:          api.FormatESModule,
-		Bundle:          true,
-		Write:           writeToDisk,
-		TreeShaking:     api.TreeShakingTrue,
-		Target:          api.ES2020,
-		JSX:             api.JSXAutomatic,
-		JSXImportSource: "react",
-		LogLevel:        api.LogLevelInfo,
+		Outfile:          outputPath,
+		Format:           api.FormatESModule,
+		Bundle:           true,
+		Write:            writeToDisk,
+		MinifyWhitespace: true,
+		TreeShaking:      api.TreeShakingTrue,
+		Target:           api.ES2020,
+		JSX:              api.JSXAutomatic,
+		JSXImportSource:  "react",
+		LogLevel:         api.LogLevelInfo,
 		// Bundle all dependencies for self-contained production build
 		External: []string{},
 		TsconfigRaw: `{
@@ -585,4 +586,3 @@ func generateDefaultHTML() string {
 </body>
 </html>`
 }
-

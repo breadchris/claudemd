@@ -18,9 +18,13 @@ import (
 )
 
 type SessionMessage struct {
-	Type     string `json:"type"`
-	Summary  string `json:"summary,omitempty"`
-	LeafUUID string `json:"leafUuid,omitempty"`
+	Type      string                 `json:"type"`
+	Summary   string                 `json:"summary,omitempty"`
+	LeafUUID  string                 `json:"leafUuid,omitempty"`
+	Message   map[string]interface{} `json:"message,omitempty"`
+	Content   string                 `json:"content,omitempty"`   // Extracted content for easy access
+	UUID      string                 `json:"uuid,omitempty"`
+	Timestamp string                 `json:"timestamp,omitempty"`
 }
 
 // ClaudeSession represents a Claude Code session stored in PostgreSQL
@@ -142,6 +146,76 @@ func (c *ClaudeSessionSync) syncExistingFiles() error {
 	})
 }
 
+// extractMessageContent extracts readable content from complex message structures
+func extractMessageContent(msg SessionMessage) string {
+	// If summary exists (for summary type), use it
+	if msg.Summary != "" {
+		return msg.Summary
+	}
+	
+	// If no message data, return empty
+	if msg.Message == nil {
+		return ""
+	}
+	
+	// Extract content from message field
+	if content, ok := msg.Message["content"]; ok {
+		switch c := content.(type) {
+		case string:
+			// User messages have content as string
+			return c
+		case []interface{}:
+			// Assistant messages have content as array of content blocks
+			var textParts []string
+			for _, item := range c {
+				if block, ok := item.(map[string]interface{}); ok {
+					if blockType, ok := block["type"].(string); ok {
+						switch blockType {
+						case "text":
+							if text, ok := block["text"].(string); ok {
+								textParts = append(textParts, text)
+							}
+						case "tool_use":
+							// Extract tool name and input for tool_use messages
+							toolName := "unknown tool"
+							if name, ok := block["name"].(string); ok {
+								toolName = name
+							}
+							var inputDesc string
+							if input, ok := block["input"].(map[string]interface{}); ok {
+								// Try to extract meaningful description from input
+								if desc, ok := input["description"].(string); ok {
+									inputDesc = desc
+								} else if prompt, ok := input["prompt"].(string); ok {
+									inputDesc = prompt
+								} else {
+									inputDesc = "with parameters"
+								}
+							}
+							textParts = append(textParts, fmt.Sprintf("Used %s %s", toolName, inputDesc))
+						case "tool_result":
+							// Extract tool result content
+							if result, ok := block["content"].(string); ok {
+								// Truncate very long results
+								if len(result) > 200 {
+									result = result[:200] + "..."
+								}
+								textParts = append(textParts, fmt.Sprintf("Tool result: %s", result))
+							} else if _, ok := block["content"].([]interface{}); ok {
+								// Handle structured results
+								textParts = append(textParts, "Tool result received")
+							}
+						}
+					}
+				}
+			}
+			return strings.Join(textParts, " ")
+		}
+	}
+	
+	return ""
+}
+
 func (c *ClaudeSessionSync) syncFile(filePath string) error {
 	// Check if file was recently synced
 	if lastSync, ok := c.syncedFiles[filePath]; ok {
@@ -182,6 +256,10 @@ func (c *ClaudeSessionSync) syncFile(filePath string) error {
 			log.Printf("Failed to parse line %d in %s: %v", lineCount, filePath, err)
 			continue
 		}
+		
+		// Extract content for easy access
+		msg.Content = extractMessageContent(msg)
+		
 		messages = append(messages, msg)
 
 		// Use the first summary as the title

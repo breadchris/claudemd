@@ -226,10 +226,23 @@ export class UserRepository {
       // Ensure username is unique
       let finalUsername = username;
       let counter = 1;
+      const maxAttempts = 100; // Prevent infinite loops
       
-      while (!(await this.isUsernameAvailable(finalUsername))) {
+      while (!(await this.isUsernameAvailable(finalUsername)) && counter <= maxAttempts) {
         finalUsername = `${username}_${counter}`;
         counter++;
+        
+        // Add small delay to prevent rapid-fire database calls
+        if (counter % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      // If we've exhausted attempts, use timestamp fallback
+      if (counter > maxAttempts) {
+        const timestamp = Date.now().toString().slice(-6);
+        finalUsername = `${username}_${timestamp}`;
+        console.warn(`Username generation hit max attempts, using fallback: ${finalUsername}`);
       }
 
       // Create new user

@@ -1,8 +1,18 @@
 import { supabase } from './SupabaseClient';
 import type { ClaudeSession, ClaudeSessionInsert, ClaudeSessionUpdate } from '../types/session';
 
+export interface SessionSummary {
+  id: string;
+  session_id: string;
+  user_id?: string;
+  title: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SessionListResponse {
-  sessions: ClaudeSession[];
+  sessions: SessionSummary[];
   total: number;
   page: number;
   per_page: number;
@@ -19,7 +29,7 @@ export interface SessionSearchParams {
 
 export class SessionRepository {
   /**
-   * Get all sessions for a user with pagination and filtering
+   * Get all sessions for a user with pagination and filtering (optimized for list view)
    */
   async getSessions(params: SessionSearchParams = {}): Promise<SessionListResponse> {
     const {
@@ -30,18 +40,20 @@ export class SessionRepository {
       user_id
     } = params;
 
+    // Use selective field fetching - exclude heavy JSONB messages field
     let supabaseQuery = supabase
       .from('claude_sessions')
-      .select('*', { count: 'exact' });
+      .select('id, session_id, user_id, title, message_count, created_at, updated_at', { count: 'exact' });
 
     // Filter by user if provided
     if (user_id) {
       supabaseQuery = supabaseQuery.eq('user_id', user_id);
     }
 
-    // Text search in title and messages
+    // Optimized text search using proper JSONB operators
     if (query) {
-      supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,messages.cs.%${query}%`);
+      // Search in title (fast) OR use JSONB containment for messages (with GIN index)
+      supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,messages.@@.${query}`);
     }
 
     // Sorting
@@ -58,7 +70,7 @@ export class SessionRepository {
       throw new Error(`Failed to fetch sessions: ${error.message}`);
     }
 
-    const sessions: ClaudeSession[] = data || [];
+    const sessions: SessionSummary[] = data || [];
     const total = count || 0;
     const total_pages = Math.ceil(total / per_page);
 
@@ -163,14 +175,15 @@ export class SessionRepository {
   }
 
   /**
-   * Get sessions by user ID
+   * Get sessions by user ID (optimized with pagination)
    */
-  async getByUserId(userId: string): Promise<ClaudeSession[]> {
+  async getByUserId(userId: string, limit: number = 50): Promise<SessionSummary[]> {
     const { data, error } = await supabase
       .from('claude_sessions')
-      .select('*')
+      .select('id, session_id, user_id, title, message_count, created_at, updated_at')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
       throw new Error(`Failed to fetch user sessions: ${error.message}`);
@@ -182,18 +195,26 @@ export class SessionRepository {
   /**
    * Get the first user message from a session (for preview)
    */
-  getFirstUserMessage(session: ClaudeSession): string {
-    const userMessage = session.messages.find(msg => msg.type === 'user' || msg.type === 'human');
-    return userMessage?.summary || session.title || 'No message preview available';
+  getFirstUserMessage(session: ClaudeSession | SessionSummary): string {
+    // Type guard to check if this is a full ClaudeSession with messages
+    if ('messages' in session && Array.isArray(session.messages)) {
+      const userMessage = session.messages.find(msg => msg.type === 'user' || msg.type === 'human');
+      if (userMessage) {
+        // Try content first, then summary, then fall back to title
+        return userMessage.content || userMessage.summary || session.title || 'No message preview available';
+      }
+    }
+    // For SessionSummary objects, we only have the title
+    return session.title || 'No message preview available';
   }
 
   /**
-   * Get recent sessions for a user
+   * Get recent sessions for a user (optimized)
    */
-  async getRecentSessions(userId?: string, limit: number = 10): Promise<ClaudeSession[]> {
+  async getRecentSessions(userId?: string, limit: number = 10): Promise<SessionSummary[]> {
     let query = supabase
       .from('claude_sessions')
-      .select('*')
+      .select('id, session_id, user_id, title, message_count, created_at, updated_at')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -211,14 +232,15 @@ export class SessionRepository {
   }
 
   /**
-   * Search sessions by content
+   * Search sessions by content (optimized with proper JSONB operators)
    */
-  async searchSessions(query: string, userId?: string): Promise<ClaudeSession[]> {
+  async searchSessions(query: string, userId?: string, limit: number = 50): Promise<SessionSummary[]> {
     let supabaseQuery = supabase
       .from('claude_sessions')
-      .select('*')
-      .or(`title.ilike.%${query}%,messages.cs.%${query}%`)
-      .order('created_at', { ascending: false });
+      .select('id, session_id, user_id, title, message_count, created_at, updated_at')
+      .or(`title.ilike.%${query}%,messages.@@.${query}`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
     if (userId) {
       supabaseQuery = supabaseQuery.eq('user_id', userId);
@@ -231,5 +253,45 @@ export class SessionRepository {
     }
 
     return data || [];
+  }
+
+  /**
+   * Get session statistics for dashboard/analytics
+   */
+  async getSessionStats(userId?: string): Promise<{
+    total_sessions: number;
+    total_messages: number;
+    avg_messages_per_session: number;
+    recent_activity_count: number;
+  }> {
+    let query = supabase
+      .from('claude_sessions')
+      .select('message_count, created_at');
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch session stats: ${error.message}`);
+    }
+
+    const sessions = data || [];
+    const total_sessions = sessions.length;
+    const total_messages = sessions.reduce((sum, s) => sum + (s.message_count || 0), 0);
+    const avg_messages_per_session = total_sessions > 0 ? total_messages / total_sessions : 0;
+    
+    // Count sessions created in last 7 days
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const recent_activity_count = sessions.filter(s => s.created_at > weekAgo).length;
+
+    return {
+      total_sessions,
+      total_messages,
+      avg_messages_per_session: Math.round(avg_messages_per_session * 100) / 100,
+      recent_activity_count
+    };
   }
 }

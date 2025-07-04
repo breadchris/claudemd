@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSessions, useSession } from '../hooks/useSessions';
+import type { SessionSummary } from '../data/SessionRepository';
 import type { ClaudeSession, SessionMessage } from '../types/session';
 
 interface ClaudeSessionViewerProps {
   initialSessionId?: string;
+  onBack?: () => void;
 }
 
-export function ClaudeSessionViewer({ initialSessionId }: ClaudeSessionViewerProps) {
+export function ClaudeSessionViewer({ initialSessionId, onBack }: ClaudeSessionViewerProps) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId || null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -50,6 +52,11 @@ export function ClaudeSessionViewer({ initialSessionId }: ClaudeSessionViewerPro
     const url = new URL(window.location.href);
     url.searchParams.delete('session');
     window.history.pushState({}, '', url.toString());
+    
+    // Call parent onBack handler if provided
+    if (onBack) {
+      onBack();
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -200,15 +207,14 @@ export function ClaudeSessionViewer({ initialSessionId }: ClaudeSessionViewerPro
 }
 
 interface SessionCardProps {
-  session: ClaudeSession;
+  session: SessionSummary;
   onSelect: () => void;
   formatDate: (date: string) => string;
   truncateTitle: (title: string, maxLength?: number) => string;
 }
 
 function SessionCard({ session, onSelect, formatDate, truncateTitle }: SessionCardProps) {
-  const messageCount = session.messages?.length || 0;
-  const lastMessage = session.messages?.[session.messages.length - 1];
+  const messageCount = session.message_count || 0;
 
   return (
     <div
@@ -224,11 +230,9 @@ function SessionCard({ session, onSelect, formatDate, truncateTitle }: SessionCa
         </div>
       </div>
       
-      {lastMessage && (
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-          {lastMessage.summary || `${lastMessage.type} message`}
-        </p>
-      )}
+      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        {messageCount} message{messageCount !== 1 ? 's' : ''} • Last updated {formatDate(session.updated_at)}
+      </p>
       
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>{formatDate(session.created_at)}</span>
@@ -332,11 +336,15 @@ interface MessageCardProps {
 }
 
 function MessageCard({ message, index }: MessageCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const PREVIEW_LENGTH = 200;
+
   const getTypeColor = (type: string) => {
     switch (type.toLowerCase()) {
       case 'summary':
         return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'user':
+      case 'human':
         return 'bg-green-50 border-green-200 text-green-800';
       case 'assistant':
         return 'bg-purple-50 border-purple-200 text-purple-800';
@@ -345,23 +353,52 @@ function MessageCard({ message, index }: MessageCardProps) {
     }
   };
 
+  const getDisplayContent = () => {
+    // Priority: content > summary > fallback message
+    const fullContent = message.content || message.summary;
+    if (!fullContent) {
+      return `${message.type} message (no content available)`;
+    }
+    return fullContent;
+  };
+
+  const displayContent = getDisplayContent();
+  const shouldShowExpansion = displayContent.length > PREVIEW_LENGTH;
+  const contentToShow = isExpanded || !shouldShowExpansion
+    ? displayContent
+    : displayContent.substring(0, PREVIEW_LENGTH) + '...';
+
   return (
     <div className={`border rounded-lg p-4 ${getTypeColor(message.type)}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium uppercase tracking-wide">
           {message.type}
         </span>
-        <span className="text-xs opacity-75">#{index + 1}</span>
+        <div className="flex items-center gap-2">
+          {message.timestamp && (
+            <span className="text-xs opacity-75">
+              {new Date(message.timestamp).toLocaleTimeString()}
+            </span>
+          )}
+          <span className="text-xs opacity-75">#{index + 1}</span>
+        </div>
       </div>
       
-      {message.summary && (
-        <p className="text-sm leading-relaxed">
-          {message.summary}
-        </p>
-      )}
+      <div className="text-sm leading-relaxed">
+        <p className="whitespace-pre-wrap">{contentToShow}</p>
+        
+        {shouldShowExpansion && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none"
+          >
+            {isExpanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
       
       {message.leafUuid && (
-        <p className="text-xs mt-2 opacity-75">
+        <p className="text-xs mt-2 opacity-75 font-mono">
           Leaf UUID: {message.leafUuid}
         </p>
       )}

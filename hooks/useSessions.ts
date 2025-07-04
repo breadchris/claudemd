@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SessionRepository } from '../data/SessionRepository';
+import { SessionRepository, type SessionSummary } from '../data/SessionRepository';
 import type { ClaudeSession } from '../types/session';
 import { useAuth } from '../auth/useAuth';
 
@@ -13,7 +13,7 @@ export interface UseSessionsOptions {
 export function useSessions(options: UseSessionsOptions = {}) {
   const { autoRefresh = true, limit = 50 } = options;
   const { user } = useAuth();
-  const [sessions, setSessions] = useState<ClaudeSession[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

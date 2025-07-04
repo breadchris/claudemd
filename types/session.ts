@@ -1,7 +1,9 @@
 export interface SessionMessage {
   type: string;
   summary?: string;
+  content?: string;
   leafUuid?: string;
+  timestamp?: string;
 }
 
 export interface ClaudeSession {
@@ -10,6 +12,7 @@ export interface ClaudeSession {
   user_id?: string;
   title: string;
   messages: SessionMessage[];
+  message_count?: number; // Computed field for optimization
   metadata?: {
     source_file?: string;
     last_synced?: string;

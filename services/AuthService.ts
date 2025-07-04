@@ -54,7 +54,15 @@ export class AuthService {
    * Get current user session
    */
   async getCurrentSession(): Promise<Session | null> {
-    return await getCurrentSession();
+    try {
+      console.log("📍 AuthService: Starting getCurrentSession...");
+      const session = await getCurrentSession();
+      console.log("✅ AuthService: Session retrieved successfully:", session ? "Found" : "None");
+      return session;
+    } catch (error) {
+      console.error("❌ AuthService: Error getting current session:", error);
+      throw new Error(`Failed to get current session: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -83,7 +91,6 @@ export class AuthService {
   async syncUserProfile(authUser: SupabaseUser): Promise<User> {
     return await this.userRepo.findOrCreateFromAuth({
       id: authUser.id,
-      email: authUser.email,
       user_metadata: authUser.user_metadata
     });
   }
@@ -127,10 +134,23 @@ export class AuthService {
   async generateUniqueUsername(baseUsername: string): Promise<string> {
     let username = this.sanitizeUsername(baseUsername);
     let counter = 1;
+    const maxAttempts = 100; // Prevent infinite loops
     
-    while (!(await this.isUsernameAvailable(username))) {
+    while (!(await this.isUsernameAvailable(username)) && counter <= maxAttempts) {
       username = `${this.sanitizeUsername(baseUsername)}_${counter}`;
       counter++;
+      
+      // Add small delay to prevent rapid-fire database calls
+      if (counter % 10 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    // If we've exhausted attempts, use timestamp fallback
+    if (counter > maxAttempts) {
+      const timestamp = Date.now().toString().slice(-6);
+      username = `${this.sanitizeUsername(baseUsername)}_${timestamp}`;
+      console.warn(`Username generation hit max attempts, using fallback: ${username}`);
     }
     
     return username;
