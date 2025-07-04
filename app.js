@@ -1091,7 +1091,7 @@ var require_react_development = __commonJS({
           }
           return dispatcher.useContext(Context);
         }
-        function useState10(initialState) {
+        function useState13(initialState) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useState(initialState);
         }
@@ -1103,7 +1103,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useRef(initialValue);
         }
-        function useEffect8(create, deps) {
+        function useEffect11(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useEffect(create, deps);
         }
@@ -1115,7 +1115,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useLayoutEffect(create, deps);
         }
-        function useCallback7(callback, deps) {
+        function useCallback9(callback, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useCallback(callback, deps);
         }
@@ -1882,11 +1882,11 @@ var require_react_development = __commonJS({
         exports.memo = memo;
         exports.startTransition = startTransition;
         exports.unstable_act = act;
-        exports.useCallback = useCallback7;
+        exports.useCallback = useCallback9;
         exports.useContext = useContext2;
         exports.useDebugValue = useDebugValue;
         exports.useDeferredValue = useDeferredValue;
-        exports.useEffect = useEffect8;
+        exports.useEffect = useEffect11;
         exports.useId = useId;
         exports.useImperativeHandle = useImperativeHandle;
         exports.useInsertionEffect = useInsertionEffect;
@@ -1894,7 +1894,7 @@ var require_react_development = __commonJS({
         exports.useMemo = useMemo;
         exports.useReducer = useReducer;
         exports.useRef = useRef;
-        exports.useState = useState10;
+        exports.useState = useState13;
         exports.useSyncExternalStore = useSyncExternalStore;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
@@ -2390,9 +2390,9 @@ var require_react_dom_development = __commonJS({
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart === "function") {
           __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
         }
-        var React6 = require_react();
+        var React8 = require_react();
         var Scheduler = require_scheduler();
-        var ReactSharedInternals = React6.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+        var ReactSharedInternals = React8.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
         var suppressWarning = false;
         function setSuppressWarning(newSuppressWarning) {
           {
@@ -3994,7 +3994,7 @@ var require_react_dom_development = __commonJS({
           {
             if (props.value == null) {
               if (typeof props.children === "object" && props.children !== null) {
-                React6.Children.forEach(props.children, function(child) {
+                React8.Children.forEach(props.children, function(child) {
                   if (child == null) {
                     return;
                   }
@@ -11856,7 +11856,7 @@ var require_react_dom_development = __commonJS({
           }
         }
         var fakeInternalInstance = {};
-        var emptyRefsObject = new React6.Component().refs;
+        var emptyRefsObject = new React8.Component().refs;
         var didWarnAboutStateAssignmentForComponent;
         var didWarnAboutUninitializedState;
         var didWarnAboutGetSnapshotBeforeUpdateWithoutDidUpdate;
@@ -24630,7 +24630,7 @@ var require_react_jsx_runtime_development = __commonJS({
     if (true) {
       (function() {
         "use strict";
-        var React6 = require_react();
+        var React8 = require_react();
         var REACT_ELEMENT_TYPE = Symbol.for("react.element");
         var REACT_PORTAL_TYPE = Symbol.for("react.portal");
         var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
@@ -24656,7 +24656,7 @@ var require_react_jsx_runtime_development = __commonJS({
           }
           return null;
         }
-        var ReactSharedInternals = React6.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+        var ReactSharedInternals = React8.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
         function error(format) {
           {
             {
@@ -25506,11 +25506,11 @@ var require_react_jsx_runtime_development = __commonJS({
             return jsxWithValidation(type, props, key, false);
           }
         }
-        var jsx7 = jsxWithValidationDynamic;
-        var jsxs6 = jsxWithValidationStatic;
+        var jsx9 = jsxWithValidationDynamic;
+        var jsxs8 = jsxWithValidationStatic;
         exports.Fragment = REACT_FRAGMENT_TYPE;
-        exports.jsx = jsx7;
-        exports.jsxs = jsxs6;
+        exports.jsx = jsx9;
+        exports.jsxs = jsxs8;
       })();
     }
   }
@@ -25532,7 +25532,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client(), 1);
 
 // components/ClaudeDocApp.tsx
-var import_react5 = __toESM(require_react(), 1);
+var import_react8 = __toESM(require_react(), 1);
 
 // auth/AuthProvider.tsx
 var import_react = __toESM(require_react(), 1);
@@ -31880,6 +31880,148 @@ var ClaudeDocRepository = class {
   }
 };
 
+// data/SessionRepository.ts
+var SessionRepository = class {
+  /**
+   * Get all sessions for a user with pagination and filtering
+   */
+  async getSessions(params = {}) {
+    const {
+      query,
+      page = 1,
+      per_page = 20,
+      sort_by = "created_at",
+      user_id
+    } = params;
+    let supabaseQuery = supabase.from("claude_sessions").select("*", { count: "exact" });
+    if (user_id) {
+      supabaseQuery = supabaseQuery.eq("user_id", user_id);
+    }
+    if (query) {
+      supabaseQuery = supabaseQuery.or(`title.ilike.%${query}%,messages.cs.%${query}%`);
+    }
+    supabaseQuery = supabaseQuery.order(sort_by, { ascending: false });
+    const from = (page - 1) * per_page;
+    const to = from + per_page - 1;
+    supabaseQuery = supabaseQuery.range(from, to);
+    const { data, error, count } = await supabaseQuery;
+    if (error) {
+      throw new Error(`Failed to fetch sessions: ${error.message}`);
+    }
+    const sessions = data || [];
+    const total = count || 0;
+    const total_pages = Math.ceil(total / per_page);
+    return {
+      sessions,
+      total,
+      page,
+      per_page,
+      total_pages
+    };
+  }
+  /**
+   * Get a single session by ID
+   */
+  async getById(id) {
+    const { data, error } = await supabase.from("claude_sessions").select("*").eq("id", id).single();
+    if (error) {
+      if (error.code === "PGRST116") {
+        return null;
+      }
+      throw new Error(`Failed to fetch session: ${error.message}`);
+    }
+    return data;
+  }
+  /**
+   * Get a single session by session_id
+   */
+  async getBySessionId(sessionId) {
+    const { data, error } = await supabase.from("claude_sessions").select("*").eq("session_id", sessionId).single();
+    if (error) {
+      if (error.code === "PGRST116") {
+        return null;
+      }
+      throw new Error(`Failed to fetch session: ${error.message}`);
+    }
+    return data;
+  }
+  /**
+   * Create a new session
+   */
+  async create(session) {
+    const { data, error } = await supabase.from("claude_sessions").insert(session).select().single();
+    if (error) {
+      throw new Error(`Failed to create session: ${error.message}`);
+    }
+    return data;
+  }
+  /**
+   * Update an existing session
+   */
+  async update(id, session) {
+    const { data, error } = await supabase.from("claude_sessions").update(session).eq("id", id).select().single();
+    if (error) {
+      throw new Error(`Failed to update session: ${error.message}`);
+    }
+    return data;
+  }
+  /**
+   * Delete a session
+   */
+  async delete(id) {
+    const { error } = await supabase.from("claude_sessions").delete().eq("id", id);
+    if (error) {
+      throw new Error(`Failed to delete session: ${error.message}`);
+    }
+    return true;
+  }
+  /**
+   * Get sessions by user ID
+   */
+  async getByUserId(userId) {
+    const { data, error } = await supabase.from("claude_sessions").select("*").eq("user_id", userId).order("created_at", { ascending: false });
+    if (error) {
+      throw new Error(`Failed to fetch user sessions: ${error.message}`);
+    }
+    return data || [];
+  }
+  /**
+   * Get the first user message from a session (for preview)
+   */
+  getFirstUserMessage(session) {
+    const userMessage = session.messages.find((msg) => msg.type === "user" || msg.type === "human");
+    return userMessage?.summary || session.title || "No message preview available";
+  }
+  /**
+   * Get recent sessions for a user
+   */
+  async getRecentSessions(userId, limit = 10) {
+    let query = supabase.from("claude_sessions").select("*").order("created_at", { ascending: false }).limit(limit);
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+    const { data, error } = await query;
+    if (error) {
+      throw new Error(`Failed to fetch recent sessions: ${error.message}`);
+    }
+    return data || [];
+  }
+  /**
+   * Search sessions by content
+   */
+  async searchSessions(query, userId) {
+    let supabaseQuery = supabase.from("claude_sessions").select("*").or(`title.ilike.%${query}%,messages.cs.%${query}%`).order("created_at", { ascending: false });
+    if (userId) {
+      supabaseQuery = supabaseQuery.eq("user_id", userId);
+    }
+    const { data, error } = await supabaseQuery;
+    if (error) {
+      throw new Error(`Failed to search sessions: ${error.message}`);
+    }
+    return data || [];
+  }
+};
+
 // data/StarRepository.ts
 var StarRepository = class {
   /**
@@ -34293,9 +34435,604 @@ var ClaudeDocBrowser = ({
   ] });
 };
 
-// components/ClaudeDocEditor.tsx
+// components/ClaudeSessionBrowser.tsx
+var import_react6 = __toESM(require_react(), 1);
+
+// hooks/useSessions.ts
 var import_react4 = __toESM(require_react(), 1);
+var sessionRepository = new SessionRepository();
+function useSessions(options = {}) {
+  const { autoRefresh = true, limit = 50 } = options;
+  const { user } = useAuth2();
+  const [sessions, setSessions] = (0, import_react4.useState)([]);
+  const [loading, setLoading] = (0, import_react4.useState)(true);
+  const [error, setError] = (0, import_react4.useState)(null);
+  const fetchSessions = (0, import_react4.useCallback)(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await sessionRepository.getRecentSessions(user?.id, limit);
+      setSessions(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch sessions");
+      console.error("Error fetching sessions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [limit, user?.id]);
+  const searchSessions = (0, import_react4.useCallback)(async (searchTerm) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await sessionRepository.searchSessions(searchTerm, user?.id);
+      setSessions(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to search sessions");
+      console.error("Error searching sessions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+  const refreshSessions = (0, import_react4.useCallback)(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+  (0, import_react4.useEffect)(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+  (0, import_react4.useEffect)(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      refreshSessions();
+    }, 3e4);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [autoRefresh, refreshSessions]);
+  return {
+    sessions,
+    loading,
+    error,
+    refreshSessions,
+    searchSessions
+  };
+}
+function useSession(sessionId) {
+  const [session, setSession] = (0, import_react4.useState)(null);
+  const [loading, setLoading] = (0, import_react4.useState)(true);
+  const [error, setError] = (0, import_react4.useState)(null);
+  const fetchSession = (0, import_react4.useCallback)(async () => {
+    if (!sessionId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await sessionRepository.getBySessionId(sessionId);
+      setSession(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch session");
+      console.error("Error fetching session:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId]);
+  (0, import_react4.useEffect)(() => {
+    fetchSession();
+  }, [fetchSession]);
+  const refreshSession = (0, import_react4.useCallback)(() => {
+    fetchSession();
+  }, [fetchSession]);
+  return {
+    session,
+    loading,
+    error,
+    refreshSession
+  };
+}
+
+// components/ClaudeSessionViewer.tsx
+var import_react5 = __toESM(require_react(), 1);
 var import_jsx_runtime4 = __toESM(require_jsx_runtime(), 1);
+function ClaudeSessionViewer({ initialSessionId }) {
+  const [selectedSessionId, setSelectedSessionId] = (0, import_react5.useState)(initialSessionId || null);
+  const [searchTerm, setSearchTerm] = (0, import_react5.useState)("");
+  const [showSearch, setShowSearch] = (0, import_react5.useState)(false);
+  const { sessions, loading: sessionsLoading, error: sessionsError, searchSessions, refreshSessions } = useSessions();
+  const { session: selectedSession, loading: sessionLoading, error: sessionError } = useSession(selectedSessionId || "");
+  (0, import_react5.useEffect)(() => {
+    const handlePopState = () => {
+      const urlParams2 = new URLSearchParams(window.location.search);
+      const sessionId2 = urlParams2.get("session");
+      if (sessionId2) {
+        setSelectedSessionId(sessionId2);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get("session");
+    if (sessionId && !selectedSessionId) {
+      setSelectedSessionId(sessionId);
+    }
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [selectedSessionId]);
+  const handleSessionSelect = (sessionId) => {
+    setSelectedSessionId(sessionId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("session", sessionId);
+    window.history.pushState({}, "", url.toString());
+  };
+  const handleBackToList = () => {
+    setSelectedSessionId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("session");
+    window.history.pushState({}, "", url.toString());
+  };
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      searchSessions(searchTerm);
+    } else {
+      refreshSessions();
+    }
+  };
+  const copySessionUrl = () => {
+    if (selectedSessionId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("session", selectedSessionId);
+      navigator.clipboard.writeText(url.toString());
+      alert("Session URL copied to clipboard!");
+    }
+  };
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+  const truncateTitle = (title, maxLength = 60) => {
+    return title.length > maxLength ? title.substring(0, maxLength) + "..." : title;
+  };
+  if (selectedSession) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      SessionDetailView,
+      {
+        session: selectedSession,
+        loading: sessionLoading,
+        error: sessionError,
+        onBack: handleBackToList,
+        onCopyUrl: copySessionUrl
+      }
+    );
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "max-w-6xl mx-auto p-4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "mb-6", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { className: "text-2xl font-bold text-gray-900", children: "Claude Sessions" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-gray-600", children: "Browse and share your Claude Code conversations" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "button",
+            {
+              onClick: () => setShowSearch(!showSearch),
+              className: "px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors",
+              children: showSearch ? "Hide Search" : "Search"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "button",
+            {
+              onClick: refreshSessions,
+              className: "px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors",
+              children: "Refresh"
+            }
+          )
+        ] })
+      ] }),
+      showSearch && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("form", { onSubmit: handleSearch, className: "mt-4", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex gap-2", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            type: "text",
+            placeholder: "Search sessions by title...",
+            value: searchTerm,
+            onChange: (e) => setSearchTerm(e.target.value),
+            className: "flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "submit",
+            className: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors",
+            children: "Search"
+          }
+        ),
+        searchTerm && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            onClick: () => {
+              setSearchTerm("");
+              refreshSessions();
+            },
+            className: "px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors",
+            children: "Clear"
+          }
+        )
+      ] }) })
+    ] }),
+    sessionsError && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "mb-4 p-4 bg-red-50 border border-red-200 rounded-lg", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-red-800", children: [
+      "Error: ",
+      sessionsError
+    ] }) }),
+    sessionsLoading && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-center py-12", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "ml-2 text-gray-600", children: "Loading sessions..." })
+    ] }),
+    !sessionsLoading && sessions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4", children: sessions.map((session) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      SessionCard,
+      {
+        session,
+        onSelect: () => handleSessionSelect(session.session_id),
+        formatDate,
+        truncateTitle
+      },
+      session.id
+    )) }),
+    !sessionsLoading && sessions.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "text-center py-12", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-gray-400 text-5xl mb-4", children: "\u{1F4DD}" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { className: "text-lg font-medium text-gray-900 mb-2", children: "No sessions found" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-gray-600", children: searchTerm ? "Try a different search term." : "Your Claude Code sessions will appear here once synced." })
+    ] })
+  ] });
+}
+function SessionCard({ session, onSelect, formatDate, truncateTitle }) {
+  const messageCount = session.messages?.length || 0;
+  const lastMessage = session.messages?.[session.messages.length - 1];
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+    "div",
+    {
+      onClick: onSelect,
+      className: "bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer",
+      children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-start justify-between mb-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { className: "font-medium text-gray-900 leading-tight", children: truncateTitle(session.title) }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex-shrink-0 text-xs text-gray-500 ml-2", children: [
+            messageCount,
+            " msg",
+            messageCount !== 1 ? "s" : ""
+          ] })
+        ] }),
+        lastMessage && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-sm text-gray-600 mb-3 line-clamp-2", children: lastMessage.summary || `${lastMessage.type} message` }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between text-xs text-gray-500", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: formatDate(session.created_at) }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "px-2 py-1 bg-gray-100 rounded text-xs", children: [
+            session.session_id.slice(0, 8),
+            "..."
+          ] })
+        ] })
+      ]
+    }
+  );
+}
+function SessionDetailView({ session, loading, error, onBack, onCopyUrl }) {
+  if (loading) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "max-w-4xl mx-auto p-4", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-center py-12", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "ml-2 text-gray-600", children: "Loading session..." })
+    ] }) });
+  }
+  if (error) {
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "max-w-4xl mx-auto p-4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "p-4 bg-red-50 border border-red-200 rounded-lg", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-red-800", children: [
+        "Error: ",
+        error
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        "button",
+        {
+          onClick: onBack,
+          className: "mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200",
+          children: "\u2190 Back to Sessions"
+        }
+      )
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "max-w-4xl mx-auto p-4", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between mb-6", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        "button",
+        {
+          onClick: onBack,
+          className: "flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors",
+          children: "\u2190 Back to Sessions"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        "button",
+        {
+          onClick: onCopyUrl,
+          className: "px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors",
+          children: "Share Session"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "bg-white border border-gray-200 rounded-lg p-6 mb-6", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { className: "text-2xl font-bold text-gray-900 mb-2", children: session.title }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex flex-wrap gap-4 text-sm text-gray-600", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { children: [
+          "Session ID: ",
+          session.session_id
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { children: [
+          "Messages: ",
+          session.messages?.length || 0
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { children: [
+          "Created: ",
+          new Date(session.created_at).toLocaleString()
+        ] }),
+        session.updated_at !== session.created_at && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { children: [
+          "Updated: ",
+          new Date(session.updated_at).toLocaleString()
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "space-y-4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h2", { className: "text-lg font-semibold text-gray-900", children: "Messages" }),
+      session.messages && session.messages.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "space-y-3", children: session.messages.map((message, index2) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(MessageCard, { message, index: index2 }, index2)) }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "text-center py-8 text-gray-500", children: "No messages in this session." })
+    ] })
+  ] });
+}
+function MessageCard({ message, index: index2 }) {
+  const getTypeColor = (type) => {
+    switch (type.toLowerCase()) {
+      case "summary":
+        return "bg-blue-50 border-blue-200 text-blue-800";
+      case "user":
+        return "bg-green-50 border-green-200 text-green-800";
+      case "assistant":
+        return "bg-purple-50 border-purple-200 text-purple-800";
+      default:
+        return "bg-gray-50 border-gray-200 text-gray-800";
+    }
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: `border rounded-lg p-4 ${getTypeColor(message.type)}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between mb-2", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "text-xs font-medium uppercase tracking-wide", children: message.type }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "text-xs opacity-75", children: [
+        "#",
+        index2 + 1
+      ] })
+    ] }),
+    message.summary && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-sm leading-relaxed", children: message.summary }),
+    message.leafUuid && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-xs mt-2 opacity-75", children: [
+      "Leaf UUID: ",
+      message.leafUuid
+    ] })
+  ] });
+}
+
+// components/ClaudeSessionBrowser.tsx
+var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+var ClaudeSessionBrowser = ({
+  onViewSession
+}) => {
+  const { user, signInWithGithub } = useAuth2();
+  const [searchQuery, setSearchQuery] = (0, import_react6.useState)("");
+  const [currentPage, setCurrentPage] = (0, import_react6.useState)(1);
+  const [viewMode, setViewMode] = (0, import_react6.useState)("grid");
+  const [selectedSession, setSelectedSession] = (0, import_react6.useState)(null);
+  const [showSearch, setShowSearch] = (0, import_react6.useState)(false);
+  const sessionRepository2 = new SessionRepository();
+  const { sessions, loading, error, refreshSessions, searchSessions } = useSessions({
+    autoRefresh: false,
+    limit: 50
+  });
+  const handleSearch = (0, import_react6.useCallback)(async (query) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    if (query.trim()) {
+      await searchSessions(query);
+    } else {
+      refreshSessions();
+    }
+  }, [searchSessions, refreshSessions]);
+  const handleSessionSelect = (session) => {
+    setSelectedSession(session);
+    if (onViewSession) {
+      onViewSession(session.session_id);
+    }
+  };
+  const handleBackToList = () => {
+    setSelectedSession(null);
+  };
+  const getFirstUserMessage = (session) => {
+    return sessionRepository2.getFirstUserMessage(session);
+  };
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+  if (selectedSession) {
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+      ClaudeSessionViewer,
+      {
+        initialSessionId: selectedSession.session_id
+      }
+    );
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "min-h-screen bg-gray-50", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "bg-white shadow-sm border-b sticky top-0 z-40", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center space-x-4", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h1", { className: "text-2xl lg:text-3xl font-bold text-gray-900", children: "Claude Sessions" }),
+          user && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2 text-sm text-gray-600", children: [
+            user.avatar_url && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              "img",
+              {
+                src: user.avatar_url,
+                alt: user.username,
+                className: "w-5 h-5 rounded-full"
+              }
+            ),
+            "@",
+            user.username
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "flex items-center gap-3", children: user ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              onClick: () => setShowSearch(!showSearch),
+              className: "px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors",
+              children: showSearch ? "Hide Search" : "Search"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              onClick: refreshSessions,
+              className: "px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors",
+              children: "Refresh"
+            }
+          )
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+          "button",
+          {
+            onClick: () => signInWithGithub(),
+            className: "bg-gray-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center gap-2",
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "currentColor", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { d: "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" }) }),
+              "Sign in with GitHub"
+            ]
+          }
+        ) })
+      ] }),
+      showSearch && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "mt-4 flex flex-col lg:flex-row gap-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "relative", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "input",
+            {
+              type: "text",
+              placeholder: "Search sessions by title or content...",
+              value: searchQuery,
+              onChange: (e) => handleSearch(e.target.value),
+              className: "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "svg",
+            {
+              className: "absolute left-3 top-2.5 h-5 w-5 text-gray-400",
+              fill: "none",
+              stroke: "currentColor",
+              viewBox: "0 0 24 24",
+              children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" })
+            }
+          )
+        ] }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex border border-gray-300 rounded-lg overflow-hidden", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              "button",
+              {
+                onClick: () => setViewMode("grid"),
+                className: `px-3 py-2 text-sm ${viewMode === "grid" ? "bg-blue-50 text-blue-600" : "bg-white text-gray-600"}`,
+                children: "Grid"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              "button",
+              {
+                onClick: () => setViewMode("list"),
+                className: `px-3 py-2 text-sm border-l border-gray-300 ${viewMode === "list" ? "bg-blue-50 text-blue-600" : "bg-white text-gray-600"}`,
+                children: "List"
+              }
+            )
+          ] }),
+          searchQuery && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            "button",
+            {
+              onClick: () => handleSearch(""),
+              className: "px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm",
+              children: "Clear"
+            }
+          )
+        ] })
+      ] })
+    ] }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "flex items-center justify-between mb-6", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "text-sm text-gray-600", children: loading ? "Loading..." : `${sessions.length} session${sessions.length !== 1 ? "s" : ""} found` }) }),
+      error && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "mb-4 p-4 bg-red-50 border border-red-200 rounded-lg", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "text-red-800", children: [
+        "Error: ",
+        error
+      ] }) }),
+      loading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center justify-center py-12", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "ml-2 text-gray-600", children: "Loading sessions..." })
+      ] }) : sessions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "text-center py-12", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "text-6xl mb-4", children: "\u{1F4AC}" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { className: "text-xl font-medium text-gray-900 mb-2", children: "No sessions found" }),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "text-gray-600 mb-4", children: searchQuery ? "Try a different search term." : "Your Claude Code sessions will appear here once synced." }),
+        !user && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+          "button",
+          {
+            onClick: () => signInWithGithub(),
+            className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors",
+            children: "Sign in to view sessions"
+          }
+        )
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: `grid gap-6 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`, children: sessions.map((session) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        "div",
+        {
+          className: "bg-white rounded-lg shadow-sm border hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2",
+          onClick: () => handleSessionSelect(session),
+          onKeyDown: (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleSessionSelect(session);
+            }
+          },
+          tabIndex: 0,
+          role: "button",
+          "aria-label": `View session: ${session.title}`,
+          children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "p-6", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-start justify-between mb-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h3", { className: "text-lg font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2 transition-colors", children: session.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "flex items-center gap-1 ml-2", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded", children: [
+                session.messages?.length || 0,
+                " msg",
+                (session.messages?.length || 0) !== 1 ? "s" : ""
+              ] }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "mb-3", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "text-gray-600 text-sm line-clamp-3 leading-relaxed", children: getFirstUserMessage(session) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "flex items-center justify-between text-xs text-gray-500 border-t pt-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: formatDate(session.created_at) }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "px-2 py-1 bg-gray-100 rounded font-mono", children: [
+                session.session_id.slice(0, 8),
+                "..."
+              ] })
+            ] })
+          ] })
+        },
+        session.id
+      )) })
+    ] })
+  ] });
+};
+
+// components/ClaudeDocEditor.tsx
+var import_react7 = __toESM(require_react(), 1);
+var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
 var ClaudeDocEditor = ({
   docId,
   onSave,
@@ -34304,23 +35041,23 @@ var ClaudeDocEditor = ({
   const { user } = useAuth2();
   const docService = new ClaudeDocService();
   const tagService = new TagService();
-  const [loading, setLoading] = (0, import_react4.useState)(false);
-  const [saving, setSaving] = (0, import_react4.useState)(false);
-  const [error, setError] = (0, import_react4.useState)(null);
-  const [title, setTitle] = (0, import_react4.useState)("");
-  const [description, setDescription] = (0, import_react4.useState)("");
-  const [content, setContent] = (0, import_react4.useState)("");
-  const [tagInput, setTagInput] = (0, import_react4.useState)("");
-  const [selectedTags, setSelectedTags] = (0, import_react4.useState)([]);
-  const [isPublic, setIsPublic] = (0, import_react4.useState)(true);
-  const [tagSuggestions, setTagSuggestions] = (0, import_react4.useState)([]);
-  const [showTagSuggestions, setShowTagSuggestions] = (0, import_react4.useState)(false);
-  (0, import_react4.useEffect)(() => {
+  const [loading, setLoading] = (0, import_react7.useState)(false);
+  const [saving, setSaving] = (0, import_react7.useState)(false);
+  const [error, setError] = (0, import_react7.useState)(null);
+  const [title, setTitle] = (0, import_react7.useState)("");
+  const [description, setDescription] = (0, import_react7.useState)("");
+  const [content, setContent] = (0, import_react7.useState)("");
+  const [tagInput, setTagInput] = (0, import_react7.useState)("");
+  const [selectedTags, setSelectedTags] = (0, import_react7.useState)([]);
+  const [isPublic, setIsPublic] = (0, import_react7.useState)(true);
+  const [tagSuggestions, setTagSuggestions] = (0, import_react7.useState)([]);
+  const [showTagSuggestions, setShowTagSuggestions] = (0, import_react7.useState)(false);
+  (0, import_react7.useEffect)(() => {
     if (docId && user) {
       loadDocument();
     }
   }, [docId, user]);
-  (0, import_react4.useEffect)(() => {
+  (0, import_react7.useEffect)(() => {
     if (tagInput.length >= 2) {
       loadTagSuggestions();
     } else {
@@ -34435,13 +35172,13 @@ var ClaudeDocEditor = ({
     return tagService.getRecommendedTags(title, description, content).filter((tag) => !selectedTags.includes(tag)).slice(0, 5);
   };
   if (loading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }) });
+    return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }) });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "min-h-screen bg-gray-50", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "mb-8", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { className: "text-2xl lg:text-3xl font-bold text-gray-900", children: docId ? "Edit Document" : "Create CLAUDE.md" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "min-h-screen bg-gray-50", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "mb-8", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h1", { className: "text-2xl lg:text-3xl font-bold text-gray-900", children: docId ? "Edit Document" : "Create CLAUDE.md" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           "button",
           {
             onClick: onCancel,
@@ -34450,13 +35187,13 @@ var ClaudeDocEditor = ({
           }
         )
       ] }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "bg-red-50 border border-red-200 rounded-lg p-3 mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-sm text-red-700", children: error }) })
+      error && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "bg-red-50 border border-red-200 rounded-lg p-3 mb-4", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "text-sm text-red-700", children: error }) })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "bg-white rounded-lg shadow-sm border", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "p-6 space-y-6", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { htmlFor: "title", className: "block text-sm font-medium text-gray-700 mb-2", children: "Title *" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "bg-white rounded-lg shadow-sm border", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "p-6 space-y-6", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("label", { htmlFor: "title", className: "block text-sm font-medium text-gray-700 mb-2", children: "Title *" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
             "input",
             {
               id: "title",
@@ -34468,14 +35205,14 @@ var ClaudeDocEditor = ({
               maxLength: 200
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
             title.length,
             "/200 characters"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { htmlFor: "description", className: "block text-sm font-medium text-gray-700 mb-2", children: "Description" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("label", { htmlFor: "description", className: "block text-sm font-medium text-gray-700 mb-2", children: "Description" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
             "textarea",
             {
               id: "description",
@@ -34487,20 +35224,20 @@ var ClaudeDocEditor = ({
               maxLength: 500
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
             description.length,
             "/500 characters"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { htmlFor: "tags", className: "block text-sm font-medium text-gray-700 mb-2", children: "Tags" }),
-          selectedTags.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "flex flex-wrap gap-2 mb-3", children: selectedTags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("label", { htmlFor: "tags", className: "block text-sm font-medium text-gray-700 mb-2", children: "Tags" }),
+          selectedTags.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "flex flex-wrap gap-2 mb-3", children: selectedTags.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
             "span",
             {
               className: "bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm flex items-center gap-1",
               children: [
                 tag,
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                   "button",
                   {
                     onClick: () => handleRemoveTag(tag),
@@ -34512,8 +35249,8 @@ var ClaudeDocEditor = ({
             },
             tag
           )) }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "relative", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "relative", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
               "input",
               {
                 id: "tags",
@@ -34525,7 +35262,7 @@ var ClaudeDocEditor = ({
                 className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               }
             ),
-            showTagSuggestions && tagSuggestions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg", children: tagSuggestions.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            showTagSuggestions && tagSuggestions.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg", children: tagSuggestions.map((tag) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
               "button",
               {
                 onClick: () => handleAddTag(tag),
@@ -34535,9 +35272,9 @@ var ClaudeDocEditor = ({
               tag
             )) })
           ] }),
-          (title || description || content) && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "mt-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-xs text-gray-500 mb-1", children: "Recommended:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "flex flex-wrap gap-1", children: getRecommendedTags().map((tag) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+          (title || description || content) && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "mt-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "text-xs text-gray-500 mb-1", children: "Recommended:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "flex flex-wrap gap-1", children: getRecommendedTags().map((tag) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
               "button",
               {
                 onClick: () => handleAddTag(tag),
@@ -34550,14 +35287,14 @@ var ClaudeDocEditor = ({
               tag
             )) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
             selectedTags.length,
             "/10 tags \u2022 Press Enter to add"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { htmlFor: "content", className: "block text-sm font-medium text-gray-700 mb-2", children: "Content * (Markdown)" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("label", { htmlFor: "content", className: "block text-sm font-medium text-gray-700 mb-2", children: "Content * (Markdown)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
             "textarea",
             {
               id: "content",
@@ -34568,16 +35305,16 @@ var ClaudeDocEditor = ({
               className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm resize-none"
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "text-xs text-gray-500 mt-1", children: [
             (content.length / 1e3).toFixed(1),
             "KB / 1000KB"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Visibility" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "space-y-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "flex items-center", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Visibility" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "space-y-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { className: "flex items-center", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                 "input",
                 {
                   type: "radio",
@@ -34587,10 +35324,10 @@ var ClaudeDocEditor = ({
                   className: "mr-2"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "text-sm", children: "Public - Anyone can view and download" })
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "text-sm", children: "Public - Anyone can view and download" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { className: "flex items-center", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { className: "flex items-center", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                 "input",
                 {
                   type: "radio",
@@ -34600,13 +35337,13 @@ var ClaudeDocEditor = ({
                   className: "mr-2"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "text-sm", children: "Private - Only you can view" })
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "text-sm", children: "Private - Only you can view" })
             ] })
           ] })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "border-t bg-gray-50 px-6 py-4 rounded-b-lg", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "border-t bg-gray-50 px-6 py-4 rounded-b-lg", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           "button",
           {
             onClick: onCancel,
@@ -34614,14 +35351,14 @@ var ClaudeDocEditor = ({
             children: "Cancel"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
           "button",
           {
             onClick: handleSave,
             disabled: saving || !title.trim() || !content.trim(),
             className: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2",
             children: [
-              saving && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }),
+              saving && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "animate-spin rounded-full h-4 w-4 border-b-2 border-white" }),
               saving ? "Saving..." : docId ? "Update" : "Create"
             ]
           }
@@ -34632,10 +35369,10 @@ var ClaudeDocEditor = ({
 };
 
 // components/ClaudeDocApp.tsx
-var import_jsx_runtime5 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime7 = __toESM(require_jsx_runtime(), 1);
 var ClaudeDocApp = () => {
-  const [currentView, setCurrentView] = (0, import_react5.useState)("browser");
-  const [editingDocId, setEditingDocId] = (0, import_react5.useState)(null);
+  const [currentView, setCurrentView] = (0, import_react8.useState)("sessions");
+  const [editingDocId, setEditingDocId] = (0, import_react8.useState)(null);
   const handleCreateNew = () => {
     setEditingDocId(null);
     setCurrentView("create");
@@ -34646,22 +35383,49 @@ var ClaudeDocApp = () => {
   };
   const handleSave = (doc) => {
     console.log("Document saved:", doc);
-    setCurrentView("browser");
+    setCurrentView("sessions");
     setEditingDocId(null);
   };
   const handleCancel = () => {
-    setCurrentView("browser");
+    setCurrentView("sessions");
     setEditingDocId(null);
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(AuthProvider, { children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "min-h-screen bg-gray-50", children: [
-    currentView === "browser" && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+  const handleViewSession = (sessionId) => {
+    console.log("Viewing session:", sessionId);
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(AuthProvider, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "min-h-screen bg-gray-50", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "bg-white border-b", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "flex items-center gap-4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          onClick: () => setCurrentView("sessions"),
+          className: `px-3 py-2 text-sm font-medium rounded-lg transition-colors ${currentView === "sessions" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`,
+          children: "Sessions"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          onClick: () => setCurrentView("documents"),
+          className: `px-3 py-2 text-sm font-medium rounded-lg transition-colors ${currentView === "documents" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:text-gray-900"}`,
+          children: "Documents"
+        }
+      )
+    ] }) }) }),
+    currentView === "sessions" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      ClaudeSessionBrowser,
+      {
+        onViewSession: handleViewSession
+      }
+    ),
+    currentView === "documents" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
       ClaudeDocBrowser,
       {
         onCreateNew: handleCreateNew,
         onEdit: handleEdit
       }
     ),
-    (currentView === "create" || currentView === "edit") && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+    (currentView === "create" || currentView === "edit") && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
       ClaudeDocEditor,
       {
         docId: editingDocId || void 0,
@@ -34673,7 +35437,7 @@ var ClaudeDocApp = () => {
 };
 
 // hooks/useClaudeDocs.ts
-var import_react6 = __toESM(require_react(), 1);
+var import_react9 = __toESM(require_react(), 1);
 var useClaudeDocs = (options = {}) => {
   const { user } = useAuth2();
   const docService = new ClaudeDocService();
@@ -34683,14 +35447,14 @@ var useClaudeDocs = (options = {}) => {
     sort_by: "created_at",
     ...options.initialParams
   };
-  const [docs, setDocs] = (0, import_react6.useState)([]);
-  const [loading, setLoading] = (0, import_react6.useState)(false);
-  const [error, setError] = (0, import_react6.useState)(null);
-  const [total, setTotal] = (0, import_react6.useState)(0);
-  const [currentPage, setCurrentPage] = (0, import_react6.useState)(defaultParams.page || 1);
-  const [totalPages, setTotalPages] = (0, import_react6.useState)(1);
-  const [searchParams, setSearchParamsState] = (0, import_react6.useState)(defaultParams);
-  const loadDocs = (0, import_react6.useCallback)(async (params) => {
+  const [docs, setDocs] = (0, import_react9.useState)([]);
+  const [loading, setLoading] = (0, import_react9.useState)(false);
+  const [error, setError] = (0, import_react9.useState)(null);
+  const [total, setTotal] = (0, import_react9.useState)(0);
+  const [currentPage, setCurrentPage] = (0, import_react9.useState)(defaultParams.page || 1);
+  const [totalPages, setTotalPages] = (0, import_react9.useState)(1);
+  const [searchParams, setSearchParamsState] = (0, import_react9.useState)(defaultParams);
+  const loadDocs = (0, import_react9.useCallback)(async (params) => {
     setLoading(true);
     setError(null);
     try {
@@ -34711,7 +35475,7 @@ var useClaudeDocs = (options = {}) => {
       setLoading(false);
     }
   }, [searchParams]);
-  const createDoc = (0, import_react6.useCallback)(async (doc) => {
+  const createDoc = (0, import_react9.useCallback)(async (doc) => {
     if (!user) {
       throw new Error("User must be authenticated to create documents");
     }
@@ -34728,7 +35492,7 @@ var useClaudeDocs = (options = {}) => {
       throw err;
     }
   }, [user, searchParams]);
-  const updateDoc = (0, import_react6.useCallback)(async (id, doc) => {
+  const updateDoc = (0, import_react9.useCallback)(async (id, doc) => {
     if (!user) {
       throw new Error("User must be authenticated to update documents");
     }
@@ -34744,7 +35508,7 @@ var useClaudeDocs = (options = {}) => {
       throw err;
     }
   }, [user]);
-  const deleteDoc = (0, import_react6.useCallback)(async (id) => {
+  const deleteDoc = (0, import_react9.useCallback)(async (id) => {
     if (!user) {
       throw new Error("User must be authenticated to delete documents");
     }
@@ -34758,7 +35522,7 @@ var useClaudeDocs = (options = {}) => {
       throw err;
     }
   }, [user]);
-  const toggleStar = (0, import_react6.useCallback)(async (id) => {
+  const toggleStar = (0, import_react9.useCallback)(async (id) => {
     if (!user) {
       throw new Error("User must be authenticated to star documents");
     }
@@ -34779,7 +35543,7 @@ var useClaudeDocs = (options = {}) => {
       throw err;
     }
   }, [user]);
-  const downloadDoc = (0, import_react6.useCallback)(async (id) => {
+  const downloadDoc = (0, import_react9.useCallback)(async (id) => {
     try {
       const result = await docService.downloadDocument(id, user?.id);
       const blob = new Blob([result.content], { type: "text/markdown" });
@@ -34802,32 +35566,32 @@ var useClaudeDocs = (options = {}) => {
       throw err;
     }
   }, [user]);
-  const setSearchParams = (0, import_react6.useCallback)((params) => {
+  const setSearchParams = (0, import_react9.useCallback)((params) => {
     const newParams = { ...searchParams, ...params, page: 1 };
     setSearchParamsState(newParams);
   }, [searchParams]);
-  const resetSearch = (0, import_react6.useCallback)(() => {
+  const resetSearch = (0, import_react9.useCallback)(() => {
     setSearchParamsState(defaultParams);
   }, []);
-  const nextPage = (0, import_react6.useCallback)(() => {
+  const nextPage = (0, import_react9.useCallback)(() => {
     if (currentPage < totalPages) {
       const newParams = { ...searchParams, page: currentPage + 1 };
       setSearchParamsState(newParams);
     }
   }, [currentPage, totalPages, searchParams]);
-  const prevPage = (0, import_react6.useCallback)(() => {
+  const prevPage = (0, import_react9.useCallback)(() => {
     if (currentPage > 1) {
       const newParams = { ...searchParams, page: currentPage - 1 };
       setSearchParamsState(newParams);
     }
   }, [currentPage, searchParams]);
-  const setPage = (0, import_react6.useCallback)((page) => {
+  const setPage = (0, import_react9.useCallback)((page) => {
     if (page >= 1 && page <= totalPages && page !== currentPage) {
       const newParams = { ...searchParams, page };
       setSearchParamsState(newParams);
     }
   }, [currentPage, totalPages, searchParams]);
-  (0, import_react6.useEffect)(() => {
+  (0, import_react9.useEffect)(() => {
     if (options.autoLoad !== false) {
       loadDocs();
     }
@@ -34857,15 +35621,15 @@ var useClaudeDocs = (options = {}) => {
 };
 
 // hooks/useTags.ts
-var import_react7 = __toESM(require_react(), 1);
+var import_react10 = __toESM(require_react(), 1);
 var useTags = () => {
   const { user } = useAuth2();
   const tagService = new TagService();
-  const [tags, setTags] = (0, import_react7.useState)([]);
-  const [loading, setLoading] = (0, import_react7.useState)(false);
-  const [error, setError] = (0, import_react7.useState)(null);
-  const [suggestions, setSuggestions] = (0, import_react7.useState)([]);
-  const loadTags = (0, import_react7.useCallback)(async () => {
+  const [tags, setTags] = (0, import_react10.useState)([]);
+  const [loading, setLoading] = (0, import_react10.useState)(false);
+  const [error, setError] = (0, import_react10.useState)(null);
+  const [suggestions, setSuggestions] = (0, import_react10.useState)([]);
+  const loadTags = (0, import_react10.useCallback)(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -34879,7 +35643,7 @@ var useTags = () => {
       setLoading(false);
     }
   }, []);
-  const searchTags = (0, import_react7.useCallback)(async (query) => {
+  const searchTags = (0, import_react10.useCallback)(async (query) => {
     try {
       return await tagService.searchTags(query);
     } catch (err) {
@@ -34889,7 +35653,7 @@ var useTags = () => {
       return [];
     }
   }, []);
-  const getSuggestions = (0, import_react7.useCallback)(async (query) => {
+  const getSuggestions = (0, import_react10.useCallback)(async (query) => {
     try {
       const tagSuggestions = await tagService.getTagSuggestions(query);
       setSuggestions(tagSuggestions);
@@ -34898,7 +35662,7 @@ var useTags = () => {
       setSuggestions([]);
     }
   }, []);
-  const createTag = (0, import_react7.useCallback)(async (name, color) => {
+  const createTag = (0, import_react10.useCallback)(async (name, color) => {
     if (!user) {
       throw new Error("User must be authenticated to create tags");
     }
@@ -34915,7 +35679,7 @@ var useTags = () => {
       throw err;
     }
   }, [user, loadTags]);
-  const deleteTag = (0, import_react7.useCallback)(async (id) => {
+  const deleteTag = (0, import_react10.useCallback)(async (id) => {
     if (!user) {
       throw new Error("User must be authenticated to delete tags");
     }
@@ -34928,10 +35692,10 @@ var useTags = () => {
       throw err;
     }
   }, [user]);
-  const validateTagNames = (0, import_react7.useCallback)((tagNames) => {
+  const validateTagNames = (0, import_react10.useCallback)((tagNames) => {
     return tagService.validateTagNames(tagNames);
   }, []);
-  const getPopularTags = (0, import_react7.useCallback)(async (limit = 20) => {
+  const getPopularTags = (0, import_react10.useCallback)(async (limit = 20) => {
     try {
       return await tagService.getPopularTags(limit);
     } catch (err) {
@@ -34939,16 +35703,16 @@ var useTags = () => {
       return [];
     }
   }, []);
-  const getPredefinedTags = (0, import_react7.useCallback)(() => {
+  const getPredefinedTags = (0, import_react10.useCallback)(() => {
     return tagService.getPredefinedTags();
   }, []);
-  const getTagsByCategory = (0, import_react7.useCallback)(() => {
+  const getTagsByCategory = (0, import_react10.useCallback)(() => {
     return tagService.getTagsByCategory();
   }, []);
-  const getRecommendedTags = (0, import_react7.useCallback)((title, description, content) => {
+  const getRecommendedTags = (0, import_react10.useCallback)((title, description, content) => {
     return tagService.getRecommendedTags(title, description, content);
   }, []);
-  (0, import_react7.useEffect)(() => {
+  (0, import_react10.useEffect)(() => {
     loadTags();
   }, [loadTags]);
   return {
@@ -34972,14 +35736,14 @@ var useTags = () => {
 };
 
 // hooks/useSearch.ts
-var import_react8 = __toESM(require_react(), 1);
+var import_react11 = __toESM(require_react(), 1);
 var useSearch = () => {
   const searchService = new SearchService();
-  const [results, setResults] = (0, import_react8.useState)(null);
-  const [loading, setLoading] = (0, import_react8.useState)(false);
-  const [error, setError] = (0, import_react8.useState)(null);
-  const [suggestions, setSuggestions] = (0, import_react8.useState)([]);
-  const search = (0, import_react8.useCallback)(async (params) => {
+  const [results, setResults] = (0, import_react11.useState)(null);
+  const [loading, setLoading] = (0, import_react11.useState)(false);
+  const [error, setError] = (0, import_react11.useState)(null);
+  const [suggestions, setSuggestions] = (0, import_react11.useState)([]);
+  const search = (0, import_react11.useCallback)(async (params) => {
     setLoading(true);
     setError(null);
     try {
@@ -34994,7 +35758,7 @@ var useSearch = () => {
       setLoading(false);
     }
   }, []);
-  const getSuggestions = (0, import_react8.useCallback)(async (query) => {
+  const getSuggestions = (0, import_react11.useCallback)(async (query) => {
     if (!query || query.trim().length < 2) {
       setSuggestions([]);
       return;
@@ -35007,20 +35771,20 @@ var useSearch = () => {
       setSuggestions([]);
     }
   }, []);
-  const getPopularTerms = (0, import_react8.useCallback)(() => {
+  const getPopularTerms = (0, import_react11.useCallback)(() => {
     return searchService.getPopularSearchTerms();
   }, []);
-  const searchByAuthor = (0, import_react8.useCallback)(async (username, params = {}) => {
+  const searchByAuthor = (0, import_react11.useCallback)(async (username, params = {}) => {
     await search({
       ...params,
       query: `author:${username}`
     });
   }, [search]);
-  const clearResults = (0, import_react8.useCallback)(() => {
+  const clearResults = (0, import_react11.useCallback)(() => {
     setResults(null);
     setError(null);
   }, []);
-  const clearError = (0, import_react8.useCallback)(() => {
+  const clearError = (0, import_react11.useCallback)(() => {
     setError(null);
   }, []);
   return {
@@ -35040,14 +35804,14 @@ var useSearch = () => {
 };
 
 // hooks/useRealtime.ts
-var import_react9 = __toESM(require_react(), 1);
+var import_react12 = __toESM(require_react(), 1);
 var useRealtime = (options, onEvent) => {
-  const [data, setData] = (0, import_react9.useState)(null);
-  const [loading, setLoading] = (0, import_react9.useState)(false);
-  const [error, setError] = (0, import_react9.useState)(null);
-  const [isConnected, setIsConnected] = (0, import_react9.useState)(false);
-  const [subscription, setSubscription] = (0, import_react9.useState)(null);
-  const subscribe = (0, import_react9.useCallback)(() => {
+  const [data, setData] = (0, import_react12.useState)(null);
+  const [loading, setLoading] = (0, import_react12.useState)(false);
+  const [error, setError] = (0, import_react12.useState)(null);
+  const [isConnected, setIsConnected] = (0, import_react12.useState)(false);
+  const [subscription, setSubscription] = (0, import_react12.useState)(null);
+  const subscribe = (0, import_react12.useCallback)(() => {
     if (subscription) {
       return;
     }
@@ -35082,7 +35846,7 @@ var useRealtime = (options, onEvent) => {
       setLoading(false);
     }
   }, [options, onEvent, subscription]);
-  const unsubscribe = (0, import_react9.useCallback)(() => {
+  const unsubscribe = (0, import_react12.useCallback)(() => {
     if (subscription) {
       supabase.removeChannel(subscription);
       setSubscription(null);
@@ -35090,7 +35854,7 @@ var useRealtime = (options, onEvent) => {
       setData(null);
     }
   }, [subscription]);
-  (0, import_react9.useEffect)(() => {
+  (0, import_react12.useEffect)(() => {
     subscribe();
     return () => {
       unsubscribe();
@@ -35146,14 +35910,14 @@ var useDocumentListRealtime = (onDocumentChange) => {
 };
 
 // index.tsx
-var import_jsx_runtime6 = __toESM(require_jsx_runtime(), 1);
+var import_jsx_runtime8 = __toESM(require_jsx_runtime(), 1);
 if (typeof document !== "undefined") {
   const rootElement = document.getElementById("root");
   if (rootElement) {
     console.log("\u{1F680} Initializing Supabase CLAUDE.md Platform...");
     try {
       const root = (0, import_client.createRoot)(rootElement);
-      root.render(/* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ClaudeDocApp, {}));
+      root.render(/* @__PURE__ */ (0, import_jsx_runtime8.jsx)(ClaudeDocApp, {}));
       console.log("\u2705 Supabase CLAUDE.md Platform rendered successfully!");
     } catch (error) {
       console.error("\u274C Failed to render Supabase CLAUDE.md Platform:", error);
@@ -35185,6 +35949,7 @@ export {
   ClaudeDocService,
   RequireAuth,
   SearchService,
+  SessionRepository,
   StarRepository,
   TagRepository,
   TagService,
