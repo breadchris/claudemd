@@ -2,16 +2,15 @@ package main
 
 import (
 	"fmt"
+	"github.com/breadchris/share/coderunner"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/breadchris/share/coderunner"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/urfave/cli/v2"
 )
-
 
 func main() {
 	app := &cli.App{
@@ -120,10 +119,8 @@ func createHTTPServer() *http.ServeMux {
 	// ES Module endpoint for serving compiled JavaScript
 	mux.HandleFunc("/module/", handleServeModule)
 
-
 	return mux
 }
-
 
 // handleRenderComponent builds and renders a React component in a simple HTML page
 func handleRenderComponent(w http.ResponseWriter, r *http.Request) {
@@ -509,14 +506,14 @@ func generateComponentHTML(componentName, componentPath string) string {
 func generateProductionHTML() string {
 	// Use a simple buffer to capture the output
 	var htmlContent string
-	
+
 	// Create a mock ResponseWriter to capture HTML content
 	mockWriter := &mockResponseWriter{}
 	mockRequest := &http.Request{}
-	
+
 	// Use the reusable production function
 	coderunner.ServeReactAppProduction(mockWriter, mockRequest, "./app.js")
-	
+
 	htmlContent = mockWriter.content
 	return htmlContent
 }
@@ -542,4 +539,3 @@ func (m *mockResponseWriter) Write(data []byte) (int, error) {
 func (m *mockResponseWriter) WriteHeader(statusCode int) {
 	// No-op for mock
 }
-
