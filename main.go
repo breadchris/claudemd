@@ -35,6 +35,17 @@ func main() {
 				Usage:  "Build the application for production",
 				Action: buildCommand,
 			},
+			{
+				Name:  "sync-sessions",
+				Usage: "Sync Claude Code sessions to Supabase",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "watch",
+						Usage: "Watch for changes and sync continuously",
+					},
+				},
+				Action: syncSessionsCommand,
+			},
 		},
 	}
 

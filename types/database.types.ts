@@ -196,6 +196,47 @@ export type Database = {
         }
         Relationships: []
       }
+      claude_sessions: {
+        Row: {
+          id: string
+          session_id: string
+          user_id: string | null
+          title: string
+          messages: Json
+          metadata: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          user_id?: string | null
+          title: string
+          messages: Json
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          user_id?: string | null
+          title?: string
+          messages?: Json
+          metadata?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claude_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -116,4 +116,4 @@ require (
 )
 
 // Replace with local parent modules
-replace github.com/breadchris/share => ../../..
+// replace github.com/breadchris/share => ../../..
