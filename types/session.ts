@@ -4,6 +4,17 @@ export interface SessionMessage {
   content?: string;
   leafUuid?: string;
   timestamp?: string;
+  // Raw message data for JSON view
+  raw?: any; // Complete original message data from Claude session files
+}
+
+export interface CategorizedMessage {
+  message: SessionMessage;
+  index: number;
+  category: 'primary' | 'secondary';
+  messageType: 'user_prompt' | 'todo_list' | 'planning' | 'tool_call' | 'summary' | 'other';
+  importance: 'high' | 'medium' | 'low';
+  isExitPlanMode?: boolean; // Indicates finalized todo plans
 }
 
 export interface ClaudeSession {

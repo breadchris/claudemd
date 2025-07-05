@@ -7,52 +7,99 @@ const sessionRepository = new SessionRepository();
 
 export interface UseSessionsOptions {
   autoRefresh?: boolean;
-  limit?: number;
+  pageSize?: number;
 }
 
 export function useSessions(options: UseSessionsOptions = {}) {
-  const { autoRefresh = true, limit = 50 } = options;
+  const { autoRefresh = true, pageSize = 20 } = options;
   const { user } = useAuth();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchSessions = useCallback(async () => {
+  const fetchSessions = useCallback(async (resetPagination = true) => {
     try {
-      setLoading(true);
+      setLoading(resetPagination);
       setError(null);
-      const data = await sessionRepository.getRecentSessions(user?.id, limit);
-      setSessions(data);
+      
+      const page = resetPagination ? 1 : currentPage;
+      const params = {
+        page,
+        per_page: pageSize,
+        user_id: user?.id,
+        query: searchQuery.trim() || undefined
+      };
+      
+      const response = await sessionRepository.getSessions(params);
+      
+      if (resetPagination) {
+        setSessions(response.sessions);
+        setCurrentPage(1);
+      } else {
+        setSessions(prev => [...prev, ...response.sessions]);
+      }
+      
+      setTotalPages(response.total_pages);
+      setHasMore(page < response.total_pages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch sessions');
       console.error('Error fetching sessions:', err);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [limit, user?.id]);
+  }, [pageSize, user?.id, searchQuery, currentPage]);
+
+  const loadMoreSessions = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    try {
+      setIsLoadingMore(true);
+      setError(null);
+      
+      const nextPage = currentPage + 1;
+      const params = {
+        page: nextPage,
+        per_page: pageSize,
+        user_id: user?.id,
+        query: searchQuery.trim() || undefined
+      };
+      
+      const response = await sessionRepository.getSessions(params);
+      
+      setSessions(prev => [...prev, ...response.sessions]);
+      setCurrentPage(nextPage);
+      setHasMore(nextPage < response.total_pages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load more sessions');
+      console.error('Error loading more sessions:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentPage, pageSize, user?.id, searchQuery, isLoadingMore, hasMore]);
 
   const searchSessions = useCallback(async (searchTerm: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await sessionRepository.searchSessions(searchTerm, user?.id);
-      setSessions(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search sessions');
-      console.error('Error searching sessions:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    setSearchQuery(searchTerm);
+    setCurrentPage(1);
+    setHasMore(true);
+    await fetchSessions(true);
+  }, [fetchSessions]);
 
   const refreshSessions = useCallback(() => {
-    fetchSessions();
+    setCurrentPage(1);
+    setHasMore(true);
+    fetchSessions(true);
   }, [fetchSessions]);
 
   // Initial load
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchSessions(true);
+  }, [user?.id]); // Only depend on user id change
 
   // Optional: Set up auto-refresh interval
   useEffect(() => {
@@ -70,9 +117,14 @@ export function useSessions(options: UseSessionsOptions = {}) {
   return {
     sessions,
     loading,
+    isLoadingMore,
     error,
+    hasMore,
+    currentPage,
+    totalPages,
     refreshSessions,
     searchSessions,
+    loadMoreSessions,
   };
 }
 

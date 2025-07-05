@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSessions } from '../hooks/useSessions';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import { SessionRepository, type SessionSummary } from '../data/SessionRepository';
 import { useAuth } from '../auth';
 import type { ClaudeSession } from '../types/session';
@@ -21,9 +22,25 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
   const [initialSessionId, setInitialSessionId] = useState<string | null>(null);
   
   const sessionRepository = new SessionRepository();
-  const { sessions, loading, error, refreshSessions, searchSessions } = useSessions({
+  const { 
+    sessions, 
+    loading, 
+    isLoadingMore,
+    error, 
+    hasMore,
+    refreshSessions, 
+    searchSessions,
+    loadMoreSessions
+  } = useSessions({
     autoRefresh: false,
-    limit: 50
+    pageSize: 20
+  });
+
+  // Set up infinite scroll
+  const { triggerRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMoreSessions
   });
 
   // Handle URL parameters for session sharing
@@ -63,7 +80,6 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
   // Handle search
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1);
     if (query.trim()) {
       await searchSessions(query);
     } else {
@@ -273,60 +289,95 @@ export const ClaudeSessionBrowser: React.FC<ClaudeSessionBrowserProps> = ({
             )}
           </div>
         ) : (
-          <div className={`grid gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
-              : 'grid-cols-1'
-          }`}>
-            {sessions.map(session => (
-              <div 
-                key={session.id} 
-                className="bg-white rounded-lg shadow-sm border hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"
-                onClick={() => handleSessionSelect(session)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleSessionSelect(session);
-                  }
-                }}
-                tabIndex={0}
-                role="button"
-                aria-label={`View session: ${session.title}`}
-              >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2 transition-colors">
-                      {session.title}
-                    </h3>
-                    <div className="flex items-center gap-1 ml-2">
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        {(() => {
-                          const count = 'message_count' in session ? session.message_count : 
-                                       ('messages' in session && session.messages) ? session.messages.length : 0;
-                          return `${count} msg${count !== 1 ? 's' : ''}`;
-                        })()}
+          <>
+            <div className={`grid gap-6 ${
+              viewMode === 'grid' 
+                ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+                : 'grid-cols-1'
+            }`}>
+              {sessions.map(session => (
+                <div 
+                  key={session.id} 
+                  className="bg-white rounded-lg shadow-sm border hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer group focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2"
+                  onClick={() => handleSessionSelect(session)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSessionSelect(session);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`View session: ${session.title}`}
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 line-clamp-2 transition-colors">
+                        {session.title}
+                      </h3>
+                      <div className="flex items-center gap-1 ml-2">
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          {(() => {
+                            const count = 'message_count' in session ? session.message_count : 
+                                         ('messages' in session && session.messages) ? session.messages.length : 0;
+                            return `${count} msg${count !== 1 ? 's' : ''}`;
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* First user message preview */}
+                    <div className="mb-3">
+                      <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
+                        {getFirstUserMessage(session)}
+                      </p>
+                    </div>
+
+                    {/* Session metadata */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-3">
+                      <span>{formatDate(session.created_at)}</span>
+                      <span className="px-2 py-1 bg-gray-100 rounded font-mono">
+                        {session.session_id.slice(0, 8)}...
                       </span>
                     </div>
                   </div>
-
-                  {/* First user message preview */}
-                  <div className="mb-3">
-                    <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed">
-                      {getFirstUserMessage(session)}
-                    </p>
-                  </div>
-
-                  {/* Session metadata */}
-                  <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-3">
-                    <span>{formatDate(session.created_at)}</span>
-                    <span className="px-2 py-1 bg-gray-100 rounded font-mono">
-                      {session.session_id.slice(0, 8)}...
-                    </span>
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Infinite Scroll Trigger and Loading States */}
+            <div className="mt-8">
+              {/* Loading More Indicator */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">Loading more sessions...</span>
+                </div>
+              )}
+
+              {/* Load More Button (fallback) */}
+              {hasMore && !isLoadingMore && (
+                <div className="flex items-center justify-center py-6">
+                  <button
+                    onClick={loadMoreSessions}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Load More Sessions
+                  </button>
+                </div>
+              )}
+
+              {/* End of Results */}
+              {!hasMore && sessions.length > 0 && (
+                <div className="flex items-center justify-center py-6">
+                  <span className="text-gray-500 text-sm">You've reached the end of your sessions</span>
+                </div>
+              )}
+
+              {/* Infinite Scroll Trigger (invisible) */}
+              <div ref={triggerRef} className="h-1" aria-hidden="true" />
+            </div>
+          </>
         )}
       </div>
     </div>
